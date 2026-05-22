@@ -28,7 +28,7 @@ export default async function DashboardPage() {
 
         <div className="grid gap-4 lg:grid-cols-2">
           <StockHealthChart data={data.stockHealth} />
-          <TypeDistributionChart data={data.typeDistribution} />
+          <TypeDistributionChart perType={data.perType} />
         </div>
 
         <div className="grid gap-4 lg:grid-cols-3">

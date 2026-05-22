@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Menu, RefreshCw } from "lucide-react";
+import { Bell, PanelLeft, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -37,18 +37,19 @@ export function Navbar({ user, onToggleSidebar }: NavbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur">
+    <header className="sticky top-0 z-30 flex h-[68px] items-center gap-3 border-b bg-background/80 px-4 backdrop-blur">
       <Button
         variant="ghost"
         size="icon"
-        className="h-10 w-10 lg:hidden"
+        className="h-9 w-9 shrink-0"
         onClick={onToggleSidebar}
-        aria-label="Menu"
+        aria-label="Collapse sidebar"
+        title="Collapse sidebar (Ctrl+B)"
       >
-        <Menu className="h-5 w-5" />
+        <PanelLeft className="h-[18px] w-[18px]" />
       </Button>
 
-      <p className="text-lg font-medium">
+      <p className="truncate text-lg font-medium">
         {greeting()}, <strong>{firstName}</strong> 👋
       </p>
 

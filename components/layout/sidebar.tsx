@@ -81,13 +81,13 @@ export function Sidebar({ collapsed, onToggle, isAdmin }: SidebarProps) {
         collapsed ? "w-16" : "w-60",
       )}
     >
-      <div className="flex h-16 items-center justify-center border-b border-sidebar-border px-4">
+      <div className="flex h-[68px] items-center justify-center border-b border-sidebar-border px-4">
         <Image
           src="/Epson_logo.svg"
           alt="Epson"
-          width={collapsed ? 36 : 96}
-          height={28}
-          className="dark:brightness-0 dark:invert"
+          width={collapsed ? 44 : 132}
+          height={collapsed ? 13 : 40}
+          className="h-auto dark:brightness-0 dark:invert"
           priority
         />
       </div>

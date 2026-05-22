@@ -1,106 +1,111 @@
-import { AlertTriangle, CircleDashed, XCircle, type LucideIcon } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronRight,
+  CircleDashed,
+  XCircle,
+  type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { AlertSeverity, AlertStockItem } from "@/lib/types";
 
 const SEV: Record<
   AlertSeverity,
-  {
-    label: string;
-    Icon: LucideIcon;
-    variant: React.ComponentProps<typeof Badge>["variant"];
-    bar: string;
-    rowClass: string;
-  }
+  { label: string; Icon: LucideIcon; iconClass: string; badgeClass: string }
 > = {
   empty: {
     label: "Empty",
     Icon: CircleDashed,
-    variant: "info",
-    bar: "bg-chart-1",
-    rowClass: "border-l-border",
+    iconClass: "bg-chart-1/15 text-chart-1",
+    badgeClass: "bg-chart-1/15 text-chart-1",
   },
   critical: {
     label: "Critical",
     Icon: XCircle,
-    variant: "destructive",
-    bar: "bg-chart-4",
-    rowClass: "border-l-chart-4 bg-destructive/5",
+    iconClass: "bg-chart-4/15 text-chart-4",
+    badgeClass: "bg-chart-4/15 text-chart-4",
   },
   low: {
     label: "Low",
     Icon: AlertTriangle,
-    variant: "warning",
-    bar: "bg-chart-3",
-    rowClass: "border-l-chart-3",
+    iconClass: "bg-chart-3/15 text-chart-3",
+    badgeClass: "bg-chart-3/15 text-chart-3",
   },
 };
 
-/** Scrollable list of parts that need attention (current stock below min). */
+/** Parts that need attention — list styled to match the Transaction Log card. */
 export function AlertStockWidget({ items }: { items: AlertStockItem[] }) {
   return (
     <Card className="flex h-full flex-col">
-      <CardHeader className="flex-row items-start justify-between space-y-0 pb-3">
-        <div>
-          <CardTitle className="text-base">⚠ Alert Stok</CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Part yang perlu perhatian
-          </p>
-        </div>
-        <Badge variant="info">{items.length} item</Badge>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">⚠ Alert Stok</CardTitle>
+        <p className="text-xs text-muted-foreground">
+          {items.length} part perlu perhatian
+        </p>
       </CardHeader>
-      <div className="max-h-[370px] space-y-2 overflow-y-auto px-6 pb-6">
+
+      <div className="flex-1 px-3">
         {items.length === 0 && (
           <p className="py-8 text-center text-sm text-muted-foreground">
             Semua stok dalam kondisi baik 🎉
           </p>
         )}
-        {items.map((item) => {
+        {items.map((item, i) => {
           const sev = SEV[item.severity];
           const Icon = sev.Icon;
-          const pct =
-            item.minStock > 0
-              ? Math.min((item.currentStock / item.minStock) * 100, 100)
-              : 0;
           return (
-            <Link
-              key={item.id}
-              href={`/parts?search=${encodeURIComponent(item.partCode)}`}
-              className={cn(
-                "block rounded-md border border-l-2 p-2.5 transition-colors hover:bg-accent/40",
-                sev.rowClass,
-              )}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <Icon className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate text-sm font-medium">
-                    {item.partName}
-                  </span>
-                </div>
-                <Badge variant={sev.variant}>{sev.label}</Badge>
-              </div>
-              <div className="mt-0.5 font-mono text-xs text-muted-foreground">
-                {item.partCode}
-              </div>
-              <div className="mt-1 text-xs">
-                Stok:{" "}
-                <strong className="font-mono">{item.currentStock}</strong>
-                <span className="text-muted-foreground">
-                  /{item.minStock} min
-                </span>
-              </div>
-              <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-muted">
+            <div key={item.id}>
+              <Link
+                href={`/parts?search=${encodeURIComponent(item.partCode)}`}
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-muted/60"
+              >
                 <span
-                  className={cn("block h-full rounded-full", sev.bar)}
-                  style={{ width: `${pct}%` }}
-                />
-              </span>
-            </Link>
+                  className={cn(
+                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                    sev.iconClass,
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-center gap-2 truncate text-sm">
+                    <span className="truncate font-semibold text-foreground">
+                      {item.partName}
+                    </span>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold",
+                        sev.badgeClass,
+                      )}
+                    >
+                      {sev.label}
+                    </span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    <span className="font-mono">{item.partCode}</span>
+                    {" · Stok "}
+                    <span className="font-mono font-medium text-foreground">
+                      {item.currentStock}
+                    </span>
+                    /{item.minStock} min
+                  </p>
+                </div>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </Link>
+              {i < items.length - 1 && <div className="mx-3 border-t" />}
+            </div>
           );
         })}
+      </div>
+
+      <div className="p-3 pt-2">
+        <Link
+          href="/parts?status=low_stock"
+          className="block rounded-md py-2 text-center text-sm font-medium text-primary hover:bg-muted/60"
+        >
+          Lihat Semua →
+        </Link>
       </div>
     </Card>
   );
