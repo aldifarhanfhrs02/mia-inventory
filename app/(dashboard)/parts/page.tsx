@@ -1,12 +1,51 @@
 import { PageHeader } from "@/components/shared/page-header";
+import { PartsClient } from "@/components/parts/parts-client";
+import { getFilterOptions, getParts } from "@/lib/actions/parts.actions";
+import { getServerSession, isAdmin } from "@/lib/auth/session";
 
-export default function MasterPartPage() {
+export const dynamic = "force-dynamic";
+
+export default async function MasterPartPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const get = (k: string) => {
+    const v = sp[k];
+    return Array.isArray(v) ? v[0] : v;
+  };
+
+  const session = await getServerSession();
+  const [data, options] = await Promise.all([
+    getParts({
+      search: get("search"),
+      type: get("type"),
+      status: get("status"),
+      maker: get("maker"),
+      category: get("category"),
+      page: Number(get("page") ?? "1") || 1,
+      sort: get("sort"),
+      dir: get("dir") === "desc" ? "desc" : "asc",
+    }),
+    getFilterOptions(),
+  ]);
+
   return (
     <>
-      <PageHeader title="Master Part" subtitle="Daftar part dan stok" />
-      <p className="text-sm text-muted-foreground">
-        Parts table and CRUD arrive in Phase 7.
-      </p>
+      <PageHeader
+        title="Master Part"
+        subtitle={`${data.total} part terdaftar`}
+      />
+      <PartsClient
+        rows={data.rows}
+        total={data.total}
+        page={data.page}
+        pageSize={data.pageSize}
+        isAdmin={isAdmin(session)}
+        makers={options.makers}
+        categories={options.categories}
+      />
     </>
   );
 }
