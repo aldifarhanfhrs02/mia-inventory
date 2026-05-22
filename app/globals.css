@@ -83,3 +83,105 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ── Login warehouse illustration — animations from the design prototype ── */
+.lg-box {
+  opacity: 0.8;
+}
+.lg-box--blue {
+  fill: oklch(0.62 0.16 258);
+}
+.lg-box--green {
+  fill: oklch(0.65 0.14 155);
+}
+.lg-box--yellow {
+  fill: oklch(0.8 0.15 85);
+}
+.dark .lg-box--blue {
+  fill: oklch(0.52 0.12 258);
+  opacity: 0.7;
+}
+.dark .lg-box--green {
+  fill: oklch(0.48 0.1 155);
+  opacity: 0.7;
+}
+.dark .lg-box--yellow {
+  fill: oklch(0.62 0.12 85);
+  opacity: 0.7;
+}
+
+/* Forklift drives across the warehouse and back */
+.lg-wh-forklift {
+  animation: lgFork 8s ease-in-out infinite;
+}
+@keyframes lgFork {
+  0%,
+  100% {
+    transform: translateX(50px);
+  }
+  40%,
+  50% {
+    transform: translateX(300px);
+  }
+  90% {
+    transform: translateX(50px);
+  }
+}
+
+/* Floating particles */
+.lg-wh-p1 {
+  animation: lgPf 4s ease-in-out infinite;
+}
+.lg-wh-p2 {
+  animation: lgPf 5s ease-in-out infinite 0.5s;
+}
+.lg-wh-p3 {
+  animation: lgPf 3.5s ease-in-out infinite 1s;
+}
+.lg-wh-p4 {
+  animation: lgPf 4.5s ease-in-out infinite 1.5s;
+}
+.lg-wh-p5 {
+  animation: lgPf 3s ease-in-out infinite 0.8s;
+}
+@keyframes lgPf {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.25;
+  }
+  50% {
+    transform: translateY(-10px);
+    opacity: 0.5;
+  }
+}
+
+/* Scan line pulse */
+.lg-wh-scan {
+  opacity: 0;
+  animation: lgScan 3s ease-in-out infinite 1s;
+}
+@keyframes lgScan {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.7;
+  }
+  60% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-wh-forklift,
+  .lg-wh-p1,
+  .lg-wh-p2,
+  .lg-wh-p3,
+  .lg-wh-p4,
+  .lg-wh-p5,
+  .lg-wh-scan {
+    animation: none;
+  }
+}
