@@ -50,6 +50,7 @@ async function loadActiveParts(): Promise<PartWithStock[]> {
       minStock,
       stdStock: (r.std_stock as number | null) ?? null,
       maxStock: (r.max_stock as number | null) ?? null,
+      price: (r.price as number | null) ?? null,
       status: "active",
       deletedAt: null,
       createdBy: (r.created_by as string | null) ?? null,

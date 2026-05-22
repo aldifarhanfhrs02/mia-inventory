@@ -15,6 +15,7 @@ export const CreatePartSchema = z
     minStock: z.number().int().min(0),
     stdStock: z.number().int().min(0).optional(),
     maxStock: z.number().int().min(0).optional(),
+    price: z.number().int().min(0).optional(),
     initialStock: z.number().int().min(0).default(0),
 
     storageType: z.enum(["A", "B", "C", "D", "E"]).optional(),
@@ -71,6 +72,7 @@ export const UpdatePartSchema = z
     minStock: z.number().int().min(0),
     stdStock: z.number().int().min(0).optional(),
     maxStock: z.number().int().min(0).optional(),
+    price: z.number().int().min(0).optional(),
     storageType: z.enum(["A", "B", "C", "D", "E"]).optional(),
     storageNumber: z.number().int().positive().optional(),
     storageBox: z.number().int().positive().optional(),

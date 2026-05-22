@@ -10,8 +10,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatDate } from "@/lib/utils/format";
 import { cn } from "@/lib/utils";
+import { formatDate, formatDateTime, formatPrice } from "@/lib/utils/format";
 import type {
   PartWithStock,
   PurchaseRecord,
@@ -22,6 +22,7 @@ export interface PartDetail {
   part: PartWithStock;
   purchases: PurchaseRecord[];
   movements: StockMovement[];
+  updatedByName: string;
 }
 
 function Row({
@@ -43,7 +44,22 @@ function Row({
   );
 }
 
-/** Slide-over part detail with Overview / Purchase / History tabs. */
+function Card({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border p-3">
+      <p className="mb-1 text-sm font-semibold">{title}</p>
+      {children}
+    </div>
+  );
+}
+
+/** Slide-over part detail — Overview / Purchase / History tabs. */
 export function PartDetailSheet({
   detail,
   onOpenChange,
@@ -52,10 +68,14 @@ export function PartDetailSheet({
   onOpenChange: (open: boolean) => void;
 }) {
   const p = detail?.part;
-  const stockPct =
-    p && p.maxStock && p.maxStock > 0
-      ? Math.min((p.currentStock / p.maxStock) * 100, 100)
-      : 0;
+  const max = p?.maxStock && p.maxStock > 0 ? p.maxStock : null;
+  const stockPct = p && max ? Math.min((p.currentStock / max) * 100, 100) : 0;
+  const barColor =
+    p && p.currentStock === 0
+      ? "bg-chart-4"
+      : p && p.currentStock < p.minStock
+        ? "bg-chart-3"
+        : "bg-chart-2";
 
   return (
     <Sheet open={!!detail} onOpenChange={onOpenChange}>
@@ -90,18 +110,22 @@ export function PartDetailSheet({
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="overview" className="space-y-4">
-                <div className="rounded-lg border p-3">
-                  <p className="mb-1 text-sm font-semibold">Identitas Part</p>
+              <TabsContent value="overview" className="space-y-3">
+                <Card title="Identitas Part">
                   <Row label="Maker" value={p.maker} />
                   <Row label="Type" value={<TypeBadge type={p.type} />} />
                   <Row label="Category" value={p.category} />
                   <Row label="Unit" value={p.unit} />
-                </div>
-                <div className="rounded-lg border p-3">
-                  <p className="mb-2 text-sm font-semibold">Informasi Stok</p>
-                  <div className="mb-1 flex justify-between text-sm">
-                    <span className="text-muted-foreground">
+                  <Row
+                    label="Price per Unit"
+                    value={formatPrice(p.price)}
+                    mono
+                  />
+                </Card>
+
+                <Card title="Informasi Stok">
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">
                       Current Stock
                     </span>
                     <span className="font-mono text-lg font-bold">
@@ -110,18 +134,23 @@ export function PartDetailSheet({
                   </div>
                   <span className="block h-1.5 overflow-hidden rounded-full bg-muted">
                     <span
-                      className="block h-full rounded-full bg-chart-2"
+                      className={cn("block h-full rounded-full", barColor)}
                       style={{ width: `${stockPct}%` }}
                     />
                   </span>
-                  <Row label="Min Stock" value={p.minStock} mono />
-                  <Row label="Std Stock" value={p.stdStock ?? "—"} mono />
-                  <Row label="Max Stock" value={p.maxStock ?? "—"} mono />
-                </div>
-                <div className="rounded-lg border p-3">
-                  <p className="mb-1 text-sm font-semibold">
-                    Lokasi Penyimpanan
-                  </p>
+                  <div className="mt-1 flex justify-between font-mono text-[10px] text-muted-foreground">
+                    <span>0</span>
+                    <span className="text-chart-4">Min {p.minStock}</span>
+                    <span className="text-chart-1">
+                      Std {p.stdStock ?? "—"}
+                    </span>
+                    <span className="text-chart-2">
+                      Max {p.maxStock ?? "—"}
+                    </span>
+                  </div>
+                </Card>
+
+                <Card title="Lokasi Penyimpanan">
                   {p.storageType ? (
                     <>
                       <Row label="Alamat" value={p.storageAddr} mono />
@@ -132,7 +161,20 @@ export function PartDetailSheet({
                       Belum ada lokasi — part berstatus unassigned.
                     </p>
                   )}
-                </div>
+                </Card>
+
+                <Card title="Metadata">
+                  <Row label="Updated By" value={detail.updatedByName} />
+                  <Row
+                    label="Updated At"
+                    value={formatDateTime(p.updatedAt)}
+                    mono
+                  />
+                  <Row
+                    label="Part Status"
+                    value={<span className="capitalize">{p.status}</span>}
+                  />
+                </Card>
               </TabsContent>
 
               <TabsContent value="purchase">

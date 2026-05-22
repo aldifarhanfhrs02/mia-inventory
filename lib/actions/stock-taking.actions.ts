@@ -47,6 +47,7 @@ export async function getStockTakingRows(): Promise<PartWithStock[]> {
       minStock,
       stdStock: (r.std_stock as number | null) ?? null,
       maxStock: (r.max_stock as number | null) ?? null,
+      price: (r.price as number | null) ?? null,
       status: "active" as const,
       deletedAt: null,
       createdBy: (r.created_by as string | null) ?? null,

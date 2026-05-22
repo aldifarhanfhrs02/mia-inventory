@@ -15,15 +15,19 @@ export default async function MasterPartPage({
     const v = sp[k];
     return Array.isArray(v) ? v[0] : v;
   };
+  const list = (k: string) => {
+    const v = get(k);
+    return v ? v.split(",").filter(Boolean) : [];
+  };
 
   const session = await getServerSession();
   const [data, options] = await Promise.all([
     getParts({
       search: get("search"),
-      type: get("type"),
-      status: get("status"),
-      maker: get("maker"),
-      category: get("category"),
+      type: list("type"),
+      status: list("status"),
+      maker: list("maker"),
+      category: list("category"),
       page: Number(get("page") ?? "1") || 1,
       sort: get("sort"),
       dir: get("dir") === "desc" ? "desc" : "asc",
@@ -45,6 +49,8 @@ export default async function MasterPartPage({
         isAdmin={isAdmin(session)}
         makers={options.makers}
         categories={options.categories}
+        usedBarcodes={options.usedBarcodes}
+        usedAddresses={options.usedAddresses}
       />
     </>
   );

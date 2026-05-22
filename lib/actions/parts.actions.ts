@@ -28,10 +28,11 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 interface GetPartsParams {
   search?: string;
-  type?: string;
-  status?: string;
-  maker?: string;
-  category?: string;
+  /** Multi-select filter values. Empty array = no filter. */
+  type?: string[];
+  status?: string[];
+  maker?: string[];
+  category?: string[];
   page?: number;
   sort?: string;
   dir?: "asc" | "desc";
@@ -39,18 +40,23 @@ interface GetPartsParams {
 
 const PAGE_SIZE = 15;
 
-/** Fetch a part row decorated with computed current stock + status. */
-async function loadPartsWithStock(): Promise<PartWithStock[]> {
+/** A parts-table row — computed stock fields plus the updater's display name. */
+export type PartTableRow = PartWithStock & { updatedByName: string };
+
+/** Fetch part rows decorated with computed current stock, status, updater. */
+async function loadPartsWithStock(): Promise<PartTableRow[]> {
   const rows = await db.execute(sql`
     SELECT
       p.*,
+      u.full_name AS updated_by_name,
       COALESCE(SUM(CASE WHEN sm.type IN ('INITIAL','IN') THEN sm.quantity ELSE 0 END), 0)
         - COALESCE(SUM(CASE WHEN sm.type = 'OUT' THEN sm.quantity ELSE 0 END), 0)
         AS current_stock
     FROM parts p
     LEFT JOIN stock_movements sm ON sm.part_id = p.id
+    LEFT JOIN users u ON u.id = p.updated_by
     WHERE p.deleted_at IS NULL
-    GROUP BY p.id
+    GROUP BY p.id, u.full_name
   `);
 
   return (rows.rows as unknown as Record<string, unknown>[]).map((r) => {
@@ -75,6 +81,7 @@ async function loadPartsWithStock(): Promise<PartWithStock[]> {
       minStock,
       stdStock: (r.std_stock as number | null) ?? null,
       maxStock: (r.max_stock as number | null) ?? null,
+      price: (r.price as number | null) ?? null,
       status,
       deletedAt: null,
       createdBy: (r.created_by as string | null) ?? null,
@@ -89,13 +96,14 @@ async function loadPartsWithStock(): Promise<PartWithStock[]> {
         (r.storage_box as number | null) ?? null,
         (r.storage_box_kecil as number | null) ?? null,
       ),
+      updatedByName: (r.updated_by_name as string | null) ?? "—",
     };
   });
 }
 
 /** Server-side filtered, sorted, paginated parts list. */
 export async function getParts(params: GetPartsParams): Promise<{
-  rows: PartWithStock[];
+  rows: PartTableRow[];
   total: number;
   page: number;
   pageSize: number;
@@ -106,34 +114,44 @@ export async function getParts(params: GetPartsParams): Promise<{
   let rows = await loadPartsWithStock();
   const {
     search = "",
-    type = "all",
-    status = "all",
-    maker = "all",
-    category = "all",
+    type = [],
+    status = [],
+    maker = [],
+    category = [],
     page = 1,
     sort = "partName",
     dir = "asc",
   } = params;
 
+  // Inactive parts are hidden unless the status filter explicitly includes them.
+  if (!status.includes("inactive")) {
+    rows = rows.filter((p) => p.status !== "inactive");
+  }
+
   if (search.trim()) {
     const q = search.trim().toLowerCase();
-    rows = rows.filter((p) =>
-      [p.partName, p.partCode, p.maker, p.storageAddr, p.category]
-        .join(" ")
-        .toLowerCase()
-        .includes(q),
-    );
+    // A numeric query targets the barcode; otherwise name / code / maker.
+    if (/^\d+$/.test(q)) {
+      rows = rows.filter((p) => (p.barcode ?? "").includes(q));
+    } else {
+      rows = rows.filter((p) =>
+        [p.partName, p.partCode, p.maker, p.storageAddr, p.category]
+          .join(" ")
+          .toLowerCase()
+          .includes(q),
+      );
+    }
   }
-  if (type !== "all") rows = rows.filter((p) => p.type === type);
-  if (maker !== "all") rows = rows.filter((p) => p.maker === maker);
-  if (category !== "all") rows = rows.filter((p) => p.category === category);
-  if (status !== "all") {
-    rows =
-      status === "inactive"
-        ? rows.filter((p) => p.status === "inactive")
-        : rows.filter(
-            (p) => p.status !== "inactive" && p.stockStatus === status,
-          );
+  if (type.length) rows = rows.filter((p) => type.includes(p.type));
+  if (maker.length) rows = rows.filter((p) => maker.includes(p.maker));
+  if (category.length)
+    rows = rows.filter((p) => category.includes(p.category));
+  if (status.length) {
+    rows = rows.filter((p) =>
+      status.some((s) =>
+        s === "inactive" ? p.status === "inactive" : p.stockStatus === s,
+      ),
+    );
   }
 
   rows.sort((a, b) => {
@@ -155,23 +173,33 @@ export async function getParts(params: GetPartsParams): Promise<{
   };
 }
 
-/** Distinct makers and categories for the filter sheet. */
+/** Filter options + the storage addresses / barcodes already in use. */
 export async function getFilterOptions(): Promise<{
   makers: string[];
   categories: string[];
+  usedBarcodes: string[];
+  usedAddresses: string[];
 }> {
   const rows = await loadPartsWithStock();
+  const active = rows.filter((r) => r.status === "active");
   return {
     makers: [...new Set(rows.map((r) => r.maker))].sort(),
     categories: [...new Set(rows.map((r) => r.category))].sort(),
+    usedBarcodes: active
+      .map((r) => r.barcode)
+      .filter((b): b is string => !!b),
+    usedAddresses: active
+      .map((r) => r.storageAddr)
+      .filter((a) => a !== "—"),
   };
 }
 
-/** Part detail with its purchase records and movement history. */
+/** Part detail with its purchase records, movement history, and updater name. */
 export async function getPartDetail(id: string): Promise<{
   part: PartWithStock;
   purchases: PurchaseRecord[];
   movements: StockMovement[];
+  updatedByName: string;
 } | null> {
   const all = await loadPartsWithStock();
   const part = all.find((p) => p.id === id);
@@ -186,7 +214,16 @@ export async function getPartDetail(id: string): Promise<{
     .from(stockMovements)
     .where(eq(stockMovements.partId, id))) as unknown as StockMovement[];
 
-  return { part, purchases, movements };
+  let updatedByName = "—";
+  if (part.updatedBy) {
+    const u = await db
+      .select({ fullName: users.fullName })
+      .from(users)
+      .where(eq(users.id, part.updatedBy));
+    updatedByName = u[0]?.fullName ?? "—";
+  }
+
+  return { part, purchases, movements, updatedByName };
 }
 
 /** Insert an activity-log row. Call inside the mutation's transaction. */
@@ -259,6 +296,7 @@ export async function createPart(
           minStock: v.minStock,
           stdStock: v.stdStock ?? null,
           maxStock: v.maxStock ?? null,
+          price: v.price ?? null,
           status: hasLocation ? "active" : "unassigned",
           createdBy: session.user.id,
           updatedBy: session.user.id,
@@ -314,16 +352,7 @@ export async function updatePart(
     return { ok: false, error: "Part Code sudah dipakai part lain" };
   }
 
-  const hasLocation = !!v.storageType;
-  const barcode = hasLocation
-    ? generateBarcode(
-        v.storageType!,
-        v.storageNumber!,
-        v.storageBox!,
-        v.storageBoxKecil!,
-      )
-    : null;
-
+  // Edit does NOT touch storage/barcode — location is managed by assignLocation.
   try {
     await db.transaction(async (tx) => {
       await tx
@@ -337,14 +366,10 @@ export async function updatePart(
           unit: v.unit as never,
           description: v.description ?? null,
           remarks: v.remarks ?? null,
-          storageType: v.storageType ?? null,
-          storageNumber: v.storageNumber ?? null,
-          storageBox: v.storageBox ?? null,
-          storageBoxKecil: v.storageBoxKecil ?? null,
-          barcode,
           minStock: v.minStock,
           stdStock: v.stdStock ?? null,
           maxStock: v.maxStock ?? null,
+          price: v.price ?? null,
           updatedBy: session.user.id,
           updatedAt: new Date(),
         })
@@ -427,6 +452,146 @@ export async function deletePart(id: string): Promise<ActionResult<null>> {
     return { ok: true, data: null };
   } catch {
     return { ok: false, error: "Gagal menghapus part" };
+  }
+}
+
+/** Assign a storage location to an unassigned part. Admin only. */
+export async function assignLocation(
+  id: string,
+  input: {
+    storageType: string;
+    storageNumber: number;
+    storageBox: number;
+    storageBoxKecil: number;
+  },
+): Promise<ActionResult<{ barcode: string }>> {
+  const session = await getServerSession();
+  if (!session) return { ok: false, error: "Unauthorized" };
+  if (!isAdmin(session)) return { ok: false, error: "Forbidden" };
+
+  const { storageType, storageNumber, storageBox, storageBoxKecil } = input;
+  if (
+    !storageType ||
+    !(storageNumber > 0) ||
+    !(storageBox > 0) ||
+    !(storageBoxKecil > 0)
+  ) {
+    return { ok: false, error: "Lengkapi semua field lokasi" };
+  }
+
+  const existing = await db.select().from(parts).where(eq(parts.id, id));
+  if (existing.length === 0) return { ok: false, error: "Part tidak ditemukan" };
+
+  const barcode = generateBarcode(
+    storageType,
+    storageNumber,
+    storageBox,
+    storageBoxKecil,
+  );
+
+  // Barcode must be unique among active, non-deleted parts.
+  const clash = await db
+    .select({ id: parts.id })
+    .from(parts)
+    .where(
+      and(
+        eq(parts.barcode, barcode),
+        eq(parts.status, "active"),
+        isNull(parts.deletedAt),
+      ),
+    );
+  if (clash.some((c) => c.id !== id)) {
+    return {
+      ok: false,
+      error: "Lokasi storage sudah digunakan part aktif lain",
+    };
+  }
+
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(parts)
+        .set({
+          storageType: storageType as never,
+          storageNumber,
+          storageBox,
+          storageBoxKecil,
+          barcode,
+          status: "active",
+          updatedBy: session.user.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(parts.id, id));
+      await logActivity(tx, session.user.id, "ASSIGN_LOCATION", id, {
+        after: { partCode: existing[0].partCode, barcode },
+      });
+    });
+    revalidatePath("/parts");
+    return { ok: true, data: { barcode } };
+  } catch {
+    return { ok: false, error: "Gagal assign lokasi" };
+  }
+}
+
+export interface ImportRow {
+  partCode: string;
+  partName: string;
+  maker: string;
+  type?: string;
+  category?: string;
+  unit?: string;
+}
+
+/** Bulk-import parts. Duplicate part codes are skipped. Admin only. */
+export async function importParts(
+  rows: ImportRow[],
+): Promise<ActionResult<{ created: number; skipped: number }>> {
+  const session = await getServerSession();
+  if (!session) return { ok: false, error: "Unauthorized" };
+  if (!isAdmin(session)) return { ok: false, error: "Forbidden" };
+
+  const existing = await db.select({ partCode: parts.partCode }).from(parts);
+  const taken = new Set(existing.map((e) => e.partCode.toUpperCase()));
+  const TYPES = ["electrical", "mechanical", "fabrication"];
+
+  let created = 0;
+  let skipped = 0;
+  try {
+    await db.transaction(async (tx) => {
+      for (const r of rows) {
+        const code = r.partCode.trim();
+        if (!code || !r.partName.trim() || taken.has(code.toUpperCase())) {
+          skipped++;
+          continue;
+        }
+        taken.add(code.toUpperCase());
+        const [row] = await tx
+          .insert(parts)
+          .values({
+            partCode: code,
+            partName: r.partName.trim(),
+            maker: r.maker.trim() || "—",
+            type: (TYPES.includes(r.type ?? "")
+              ? r.type
+              : "electrical") as never,
+            category: r.category?.trim() || "Uncategorized",
+            unit: (r.unit?.trim() || "PCS") as never,
+            minStock: 0,
+            status: "unassigned",
+            createdBy: session.user.id,
+            updatedBy: session.user.id,
+          })
+          .returning({ id: parts.id });
+        await logActivity(tx, session.user.id, "IMPORT", row.id, {
+          after: { partCode: code },
+        });
+        created++;
+      }
+    });
+    revalidatePath("/parts");
+    return { ok: true, data: { created, skipped } };
+  } catch {
+    return { ok: false, error: "Gagal mengimpor part" };
   }
 }
 

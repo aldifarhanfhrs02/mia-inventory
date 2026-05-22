@@ -79,6 +79,7 @@ export interface Part {
   minStock: number;
   stdStock: number | null;
   maxStock: number | null;
+  price: number | null;
 
   status: PartStatus;
   deletedAt: Date | null;
@@ -315,6 +316,7 @@ export interface CreatePartInput {
   minStock: number;
   stdStock?: number;
   maxStock?: number;
+  price?: number;
   initialStock: number;
   storageType?: StorageType;
   storageNumber?: number;

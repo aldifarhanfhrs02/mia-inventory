@@ -1,333 +1,535 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { AlertTriangle, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { toast } from "sonner";
+import { TypeBadge } from "@/components/shared/type-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { createPart, updatePart } from "@/lib/actions/parts.actions";
+import { createPart } from "@/lib/actions/parts.actions";
 import { CreatePartSchema } from "@/lib/validations/parts.schema";
-import { generateBarcode } from "@/lib/utils/barcode";
-import type { CreatePartInput, PartType, PartWithStock } from "@/lib/types";
+import { generateBarcode, formatStorageAddr } from "@/lib/utils/barcode";
+import { formatPrice } from "@/lib/utils/format";
+import type { CreatePartInput, PartType } from "@/lib/types";
 
-/** Form values — numeric fields are kept as strings while editing. */
-interface FormValues {
-  partName: string;
-  partCode: string;
-  maker: string;
-  type: PartType;
-  category: string;
-  unit: string;
-  description: string;
-  remarks: string;
-  minStock: string;
-  stdStock: string;
-  maxStock: string;
-  initialStock: string;
-  storageType: string;
-  storageNumber: string;
-  storageBox: string;
-  storageBoxKecil: string;
-}
-
-const EMPTY: FormValues = {
+const EMPTY = {
   partName: "",
   partCode: "",
   maker: "",
-  type: "electrical",
+  type: "electrical" as PartType,
   category: "",
   unit: "PCS",
   description: "",
   remarks: "",
-  minStock: "0",
+  price: "",
+  minStock: "",
   stdStock: "",
   maxStock: "",
-  initialStock: "0",
+  initialStock: "",
   storageType: "",
   storageNumber: "",
   storageBox: "",
   storageBoxKecil: "",
 };
+type FormState = typeof EMPTY;
 
+const STEPS = ["Identitas Part", "Lokasi & Stok", "Preview"];
 const TYPES: PartType[] = ["electrical", "mechanical", "fabrication"];
-const num = (s: string): number | undefined =>
+const UNITS = ["PCS", "SET", "MTR", "KG", "LBR", "BTG", "ROL", "PAK"];
+const numOrU = (s: string): number | undefined =>
   s.trim() === "" ? undefined : Number(s);
 
 interface PartFormSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** When set, the form edits this part; otherwise it creates a new one. */
-  editPart: PartWithStock | null;
+  usedBarcodes: string[];
+  usedAddresses: string[];
 }
 
-/** Three-step add / edit part wizard. */
+/** 3-step "Tambah Part" wizard. */
 export function PartFormSheet({
   open,
   onOpenChange,
-  editPart,
+  usedBarcodes,
+  usedAddresses,
 }: PartFormSheetProps) {
   const router = useRouter();
   const [step, setStep] = useState(1);
+  const [form, setForm] = useState<FormState>(EMPTY);
   const [saving, setSaving] = useState(false);
-  const { register, handleSubmit, reset, watch, setValue } =
-    useForm<FormValues>({ defaultValues: EMPTY });
+  const [done, setDone] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
+  const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
+    setForm((f) => ({ ...f, [key]: value }));
+
+  const reset = () => {
+    setForm(EMPTY);
     setStep(1);
-    reset(
-      editPart
-        ? {
-            partName: editPart.partName,
-            partCode: editPart.partCode,
-            maker: editPart.maker,
-            type: editPart.type,
-            category: editPart.category,
-            unit: editPart.unit,
-            description: editPart.description ?? "",
-            remarks: editPart.remarks ?? "",
-            minStock: String(editPart.minStock),
-            stdStock: editPart.stdStock?.toString() ?? "",
-            maxStock: editPart.maxStock?.toString() ?? "",
-            initialStock: "0",
-            storageType: editPart.storageType ?? "",
-            storageNumber: editPart.storageNumber?.toString() ?? "",
-            storageBox: editPart.storageBox?.toString() ?? "",
-            storageBoxKecil: editPart.storageBoxKecil?.toString() ?? "",
-          }
-        : EMPTY,
-    );
-  }, [open, editPart, reset]);
+    setDone(false);
+  };
+  const close = () => {
+    onOpenChange(false);
+    setTimeout(reset, 200);
+  };
 
-  const v = watch();
-  const barcodePreview =
-    v.storageType && v.storageNumber && v.storageBox && v.storageBoxKecil
-      ? generateBarcode(
-          v.storageType,
-          Number(v.storageNumber),
-          Number(v.storageBox),
-          Number(v.storageBoxKecil),
-        )
-      : "—";
+  const hasAllStorage =
+    !!form.storageType &&
+    !!form.storageNumber &&
+    !!form.storageBox &&
+    !!form.storageBoxKecil;
+  const storageAddr = hasAllStorage
+    ? formatStorageAddr(
+        form.storageType,
+        Number(form.storageNumber),
+        Number(form.storageBox),
+        Number(form.storageBoxKecil),
+      )
+    : "—";
+  const barcode = hasAllStorage
+    ? generateBarcode(
+        form.storageType,
+        Number(form.storageNumber),
+        Number(form.storageBox),
+        Number(form.storageBoxKecil),
+      )
+    : "—";
+  const conflict =
+    hasAllStorage &&
+    (usedAddresses.includes(storageAddr) || usedBarcodes.includes(barcode));
 
-  const onSubmit = (data: FormValues) => {
+  const canStep2 =
+    form.partName && form.partCode && form.maker && form.category && form.unit;
+
+  const submit = async () => {
     const input: CreatePartInput = {
-      partName: data.partName,
-      partCode: data.partCode,
-      maker: data.maker,
-      type: data.type,
-      category: data.category,
-      unit: data.unit as CreatePartInput["unit"],
-      description: data.description || undefined,
-      remarks: data.remarks || undefined,
-      minStock: Number(data.minStock || 0),
-      stdStock: num(data.stdStock),
-      maxStock: num(data.maxStock),
-      initialStock: Number(data.initialStock || 0),
-      storageType: (data.storageType ||
+      partName: form.partName,
+      partCode: form.partCode,
+      maker: form.maker,
+      type: form.type,
+      category: form.category,
+      unit: form.unit as CreatePartInput["unit"],
+      description: form.description || undefined,
+      remarks: form.remarks || undefined,
+      price: numOrU(form.price),
+      minStock: Number(form.minStock || 0),
+      stdStock: numOrU(form.stdStock),
+      maxStock: numOrU(form.maxStock),
+      initialStock: Number(form.initialStock || 0),
+      storageType: (form.storageType ||
         undefined) as CreatePartInput["storageType"],
-      storageNumber: num(data.storageNumber),
-      storageBox: num(data.storageBox),
-      storageBoxKecil: num(data.storageBoxKecil),
+      storageNumber: numOrU(form.storageNumber),
+      storageBox: numOrU(form.storageBox),
+      storageBoxKecil: numOrU(form.storageBoxKecil),
     };
-
     const check = CreatePartSchema.safeParse(input);
     if (!check.success) {
       toast.error(check.error.issues[0]?.message ?? "Periksa kembali isian");
       return;
     }
-
     setSaving(true);
-    const action = editPart
-      ? updatePart(editPart.id, input)
-      : createPart(input);
-    action
-      .then((res) => {
-        if (res.ok) {
-          toast.success(editPart ? "Part diperbarui" : "Part ditambahkan");
-          onOpenChange(false);
-          router.refresh();
-        } else {
-          toast.error(res.error);
-        }
-      })
-      .finally(() => setSaving(false));
+    const res = await createPart(input);
+    setSaving(false);
+    if (res.ok) {
+      setDone(true);
+      router.refresh();
+    } else {
+      toast.error(res.error);
+    }
   };
 
-  const field = (
-    label: string,
-    name: keyof FormValues,
-    opts: { required?: boolean; type?: string } = {},
-  ) => (
+  const labelled = (label: string, required: boolean, node: React.ReactNode) => (
     <div className="space-y-1.5">
       <Label>
         {label}
-        {opts.required && <span className="text-destructive"> *</span>}
+        {required && <span className="text-destructive"> *</span>}
       </Label>
-      <Input type={opts.type ?? "text"} {...register(name)} />
+      {node}
     </div>
   );
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={(o) => (o ? undefined : close())}>
       <SheetContent
         side="right"
-        className="flex w-[460px] flex-col sm:max-w-[460px]"
+        className="flex w-[480px] flex-col gap-0 sm:max-w-[480px]"
       >
         <SheetHeader>
-          <SheetTitle>{editPart ? "Edit Part" : "Tambah Part"}</SheetTitle>
-          <div className="flex gap-1">
-            {[1, 2, 3].map((s) => (
-              <span
-                key={s}
-                className={cn(
-                  "h-1 flex-1 rounded-full",
-                  s <= step ? "bg-primary" : "bg-muted",
-                )}
-              />
-            ))}
-          </div>
+          <SheetTitle>Tambah Part Baru</SheetTitle>
         </SheetHeader>
 
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="flex flex-1 flex-col overflow-hidden"
-        >
-          <div className="flex-1 space-y-3 overflow-y-auto px-4">
-            {step === 1 && (
-              <>
-                <p className="text-sm font-semibold">Identitas</p>
-                {field("Part Name", "partName", { required: true })}
-                {field("Part Code", "partCode", { required: true })}
-                {field("Maker", "maker", { required: true })}
-                <div className="space-y-1.5">
-                  <Label>
-                    Type<span className="text-destructive"> *</span>
-                  </Label>
-                  <div className="flex gap-2">
-                    {TYPES.map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setValue("type", t)}
-                        className={cn(
-                          "flex-1 rounded-md border py-1.5 text-sm capitalize",
-                          v.type === t
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "hover:bg-accent",
-                        )}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {field("Category", "category", { required: true })}
-                {field("Unit", "unit", { required: true })}
-                <div className="space-y-1.5">
-                  <Label>Description</Label>
-                  <Textarea rows={2} {...register("description")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Remarks</Label>
-                  <Textarea rows={2} {...register("remarks")} />
-                </div>
-              </>
-            )}
+        {!done && (
+          <div className="flex items-center gap-1 px-4 pb-3">
+            {STEPS.map((label, i) => (
+              <div key={label} className="flex flex-1 items-center gap-1.5">
+                <span
+                  className={cn(
+                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+                    step > i + 1
+                      ? "bg-chart-2 text-white"
+                      : step === i + 1
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {step > i + 1 ? "✓" : i + 1}
+                </span>
+                <span
+                  className={cn(
+                    "truncate text-xs",
+                    step === i + 1
+                      ? "font-medium text-foreground"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {label}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
 
-            {step === 2 && (
-              <>
-                <p className="text-sm font-semibold">Stok & Lokasi</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {field("Min", "minStock", { required: true, type: "number" })}
-                  {field("Std", "stdStock", { type: "number" })}
-                  {field("Max", "maxStock", { type: "number" })}
-                </div>
-                {!editPart &&
-                  field("Initial Stock", "initialStock", { type: "number" })}
-                <p className="pt-2 text-xs text-muted-foreground">
-                  Lokasi — isi keempatnya atau kosongkan semua.
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {field("Storage Type (A–E)", "storageType")}
-                  {field("Number", "storageNumber", { type: "number" })}
-                  {field("Box", "storageBox", { type: "number" })}
-                  {field("Box Kecil", "storageBoxKecil", { type: "number" })}
-                </div>
-                <div className="rounded-md border bg-muted/40 p-2 text-sm">
-                  Barcode preview:{" "}
-                  <span className="font-mono font-semibold">
-                    {barcodePreview}
+        <div className="flex-1 space-y-3 overflow-y-auto px-4 pb-4">
+          {done ? (
+            <div className="py-12 text-center">
+              <div className="mb-3 text-5xl">✅</div>
+              <p className="text-base font-semibold">
+                Part Berhasil Ditambahkan
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                <strong>{form.partName}</strong> ({form.partCode})
+              </p>
+              <div className="mt-5 flex justify-center gap-2">
+                <Button variant="outline" onClick={reset}>
+                  Tambah Lagi
+                </Button>
+                <Button onClick={close}>Selesai</Button>
+              </div>
+            </div>
+          ) : step === 1 ? (
+            <>
+              {labelled(
+                "Part Name",
+                true,
+                <Input
+                  value={form.partName}
+                  onChange={(e) => set("partName", e.target.value)}
+                  placeholder="Nama part…"
+                />,
+              )}
+              {labelled(
+                "Part Code",
+                true,
+                <Input
+                  value={form.partCode}
+                  onChange={(e) => set("partCode", e.target.value)}
+                  placeholder="MIA-EL-XXX"
+                  className="font-mono"
+                />,
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                {labelled(
+                  "Maker",
+                  true,
+                  <Input
+                    value={form.maker}
+                    onChange={(e) => set("maker", e.target.value)}
+                  />,
+                )}
+                {labelled(
+                  "Type",
+                  true,
+                  <Select
+                    value={form.type}
+                    onValueChange={(v) => set("type", v as PartType)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TYPES.map((t) => (
+                        <SelectItem key={t} value={t} className="capitalize">
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>,
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {labelled(
+                  "Category",
+                  true,
+                  <Input
+                    value={form.category}
+                    onChange={(e) => set("category", e.target.value)}
+                    placeholder="e.g. Sensor"
+                  />,
+                )}
+                {labelled(
+                  "Unit",
+                  true,
+                  <Select
+                    value={form.unit}
+                    onValueChange={(v) => set("unit", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {UNITS.map((u) => (
+                        <SelectItem key={u} value={u}>
+                          {u}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>,
+                )}
+              </div>
+              {labelled(
+                "Price per Unit",
+                false,
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    Rp
+                  </span>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={form.price}
+                    onChange={(e) => set("price", e.target.value)}
+                    placeholder="0"
+                    className="pl-9 font-mono"
+                  />
+                </div>,
+              )}
+              {labelled(
+                "Description",
+                false,
+                <Textarea
+                  rows={2}
+                  value={form.description}
+                  onChange={(e) => set("description", e.target.value)}
+                />,
+              )}
+              {labelled(
+                "Remarks",
+                false,
+                <Input
+                  value={form.remarks}
+                  onChange={(e) => set("remarks", e.target.value)}
+                />,
+              )}
+            </>
+          ) : step === 2 ? (
+            <>
+              <p className="text-sm font-semibold">Stock Thresholds</p>
+              <div className="grid grid-cols-4 gap-2">
+                {labelled(
+                  "Min",
+                  true,
+                  <Input
+                    type="number"
+                    min="0"
+                    value={form.minStock}
+                    onChange={(e) => set("minStock", e.target.value)}
+                    className="font-mono"
+                  />,
+                )}
+                {labelled(
+                  "Std",
+                  false,
+                  <Input
+                    type="number"
+                    min="0"
+                    value={form.stdStock}
+                    onChange={(e) => set("stdStock", e.target.value)}
+                    className="font-mono"
+                  />,
+                )}
+                {labelled(
+                  "Max",
+                  false,
+                  <Input
+                    type="number"
+                    min="0"
+                    value={form.maxStock}
+                    onChange={(e) => set("maxStock", e.target.value)}
+                    className="font-mono"
+                  />,
+                )}
+                {labelled(
+                  "Initial",
+                  false,
+                  <Input
+                    type="number"
+                    min="0"
+                    value={form.initialStock}
+                    onChange={(e) => set("initialStock", e.target.value)}
+                    className="font-mono"
+                  />,
+                )}
+              </div>
+              <p className="pt-1 text-sm font-semibold">
+                Storage Location{" "}
+                <span className="text-xs font-normal text-muted-foreground">
+                  (opsional)
+                </span>
+              </p>
+              <div className="grid grid-cols-4 gap-2">
+                {labelled(
+                  "Type",
+                  false,
+                  <Select
+                    value={form.storageType || "none"}
+                    onValueChange={(v) =>
+                      set("storageType", v === "none" ? "" : v)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">—</SelectItem>
+                      {["A", "B", "C", "D", "E"].map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>,
+                )}
+                {labelled(
+                  "Number",
+                  false,
+                  <Input
+                    type="number"
+                    min="1"
+                    value={form.storageNumber}
+                    onChange={(e) => set("storageNumber", e.target.value)}
+                    className="font-mono"
+                  />,
+                )}
+                {labelled(
+                  "Box",
+                  false,
+                  <Input
+                    type="number"
+                    min="1"
+                    value={form.storageBox}
+                    onChange={(e) => set("storageBox", e.target.value)}
+                    className="font-mono"
+                  />,
+                )}
+                {labelled(
+                  "Box Kecil",
+                  false,
+                  <Input
+                    type="number"
+                    min="1"
+                    value={form.storageBoxKecil}
+                    onChange={(e) => set("storageBoxKecil", e.target.value)}
+                    className="font-mono"
+                  />,
+                )}
+              </div>
+              {hasAllStorage && (
+                <div className="rounded-md border bg-muted/40 p-2.5 text-sm">
+                  Barcode:{" "}
+                  <span className="font-mono text-base font-bold tracking-wide">
+                    {barcode}
+                  </span>{" "}
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {storageAddr}
                   </span>
                 </div>
-              </>
-            )}
-
-            {step === 3 && (
-              <>
-                <p className="text-sm font-semibold">Review</p>
-                <div className="rounded-md border p-3 text-sm">
-                  <p>
-                    <strong>{v.partName || "—"}</strong> ({v.partCode || "—"})
-                  </p>
-                  <p className="text-muted-foreground">
-                    {v.maker} · {v.type} · {v.category} · {v.unit}
-                  </p>
-                  <p className="mt-2 text-muted-foreground">
-                    Min {v.minStock || 0} / Std {v.stdStock || "—"} / Max{" "}
-                    {v.maxStock || "—"}
-                  </p>
-                  {!editPart && (
-                    <p className="text-muted-foreground">
-                      Initial stock: {v.initialStock || 0}
+              )}
+              {conflict && (
+                <div className="flex items-start gap-2 rounded-md border border-destructive/20 bg-destructive/5 p-2.5">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                  <div className="text-xs">
+                    <p className="font-semibold text-destructive">
+                      Storage sudah digunakan!
                     </p>
-                  )}
-                  <p className="text-muted-foreground">
-                    Barcode: <span className="font-mono">{barcodePreview}</span>
-                  </p>
+                    <p className="mt-0.5 text-muted-foreground">
+                      Alamat{" "}
+                      <code className="font-mono">{storageAddr}</code> dipakai
+                      part aktif lain. Nonaktifkan part itu dulu, atau pilih
+                      lokasi lain.
+                    </p>
+                  </div>
                 </div>
-              </>
-            )}
-          </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="rounded-lg border p-3 text-sm">
+                <p className="mb-1 font-semibold">Identitas Part</p>
+                <p>
+                  <strong>{form.partName || "—"}</strong> ({form.partCode || "—"})
+                </p>
+                <p className="text-muted-foreground">
+                  {form.maker} · <TypeBadge type={form.type} /> ·{" "}
+                  {form.category} · {form.unit}
+                </p>
+                <p className="text-muted-foreground">
+                  Price: {formatPrice(numOrU(form.price) ?? null)}
+                </p>
+              </div>
+              <div className="rounded-lg border p-3 text-sm">
+                <p className="mb-1 font-semibold">Stok &amp; Lokasi</p>
+                <p className="text-muted-foreground">
+                  Min {form.minStock || 0} / Std {form.stdStock || "—"} / Max{" "}
+                  {form.maxStock || "—"} · Initial {form.initialStock || 0}
+                </p>
+                <p className="text-muted-foreground">
+                  Storage: {storageAddr}
+                  {hasAllStorage && ` · Barcode ${barcode}`}
+                </p>
+              </div>
+            </>
+          )}
+        </div>
 
-          <SheetFooter className="flex-row gap-2">
+        {!done && (
+          <div className="flex items-center gap-2 border-t p-4">
             {step > 1 && (
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1"
-                onClick={() => setStep((s) => s - 1)}
-              >
+              <Button variant="outline" onClick={() => setStep((s) => s - 1)}>
                 Kembali
               </Button>
             )}
-            {step < 3 && (
+            <div className="flex-1" />
+            {step < 3 ? (
               <Button
-                type="button"
-                className="flex-1"
+                disabled={(step === 1 && !canStep2) || (step === 2 && conflict)}
                 onClick={() => setStep((s) => s + 1)}
               >
                 Lanjut
               </Button>
-            )}
-            {step === 3 && (
-              <Button type="submit" className="flex-1" disabled={saving}>
-                {saving ? "Menyimpan…" : "Simpan"}
+            ) : (
+              <Button disabled={saving} onClick={submit}>
+                <Plus className="mr-1 h-4 w-4" />
+                {saving ? "Menyimpan…" : "Simpan Part"}
               </Button>
             )}
-          </SheetFooter>
-        </form>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   );

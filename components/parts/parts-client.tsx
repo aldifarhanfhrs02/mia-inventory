@@ -4,24 +4,35 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Pagination } from "@/components/shared/pagination";
 import { getPartDetail } from "@/lib/actions/parts.actions";
-import type { PartWithStock } from "@/lib/types";
-import { FilterSheet } from "./filter-sheet";
+import { getStorageHistory } from "@/lib/actions/purchase.actions";
+import type { PartTableRow } from "@/lib/actions/parts.actions";
+import { AssignLocationSheet } from "./assign-location-sheet";
+import { EditPartSheet } from "./edit-part-sheet";
+import { ExportDialog } from "./export-dialog";
+import { ImportDialog } from "./import-dialog";
 import { PartDetailSheet, type PartDetail } from "./part-detail-sheet";
 import { PartFormSheet } from "./part-form-sheet";
 import { PartsTable } from "./parts-table";
 import { PartsToolbar } from "./parts-toolbar";
+import { PurchasePartSheet } from "./purchase-part-sheet";
+import {
+  StorageHistoryDialog,
+  type StorageHistoryData,
+} from "./storage-history-dialog";
 
 interface PartsClientProps {
-  rows: PartWithStock[];
+  rows: PartTableRow[];
   total: number;
   page: number;
   pageSize: number;
   isAdmin: boolean;
   makers: string[];
   categories: string[];
+  usedBarcodes: string[];
+  usedAddresses: string[];
 }
 
-/** Orchestrates the Master Part toolbar, table, pagination, and sheets. */
+/** Orchestrates the Master Part toolbar, table, pagination, and all sheets. */
 export function PartsClient({
   rows,
   total,
@@ -30,31 +41,43 @@ export function PartsClient({
   isAdmin,
   makers,
   categories,
+  usedBarcodes,
+  usedAddresses,
 }: PartsClientProps) {
   const [detail, setDetail] = useState<PartDetail | null>(null);
-  const [formOpen, setFormOpen] = useState(false);
-  const [editPart, setEditPart] = useState<PartWithStock | null>(null);
-  const [filterOpen, setFilterOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [editPart, setEditPart] = useState<PartTableRow | null>(null);
+  const [assignPart, setAssignPart] = useState<PartTableRow | null>(null);
+  const [purchasePart, setPurchasePart] = useState<PartTableRow | null>(null);
+  const [storageHistory, setStorageHistory] =
+    useState<StorageHistoryData | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [, startTransition] = useTransition();
 
-  // Fetch detail in the click handler (an event) — no setState-in-effect.
-  const openDetail = (part: PartWithStock) => {
+  // Detail + storage history are fetched in click handlers (events, not render).
+  const openDetail = (part: PartTableRow) =>
     startTransition(async () => {
       const d = await getPartDetail(part.id);
-      if (d) setDetail(d);
+      if (d) setDetail(d as PartDetail);
       else toast.error("Part tidak ditemukan");
     });
-  };
+
+  const openStorageHistory = (addr: string) =>
+    startTransition(async () => {
+      const res = await getStorageHistory(addr);
+      setStorageHistory({ addr, ...res });
+    });
 
   return (
     <>
       <PartsToolbar
         isAdmin={isAdmin}
-        onAdd={() => {
-          setEditPart(null);
-          setFormOpen(true);
-        }}
-        onOpenFilter={() => setFilterOpen(true)}
+        makers={makers}
+        categories={categories}
+        onAdd={() => setAddOpen(true)}
+        onImport={() => setImportOpen(true)}
+        onExport={() => setExportOpen(true)}
       />
 
       <PartsTable
@@ -62,10 +85,10 @@ export function PartsClient({
         startIndex={(page - 1) * pageSize}
         isAdmin={isAdmin}
         onView={openDetail}
-        onEdit={(p) => {
-          setEditPart(p);
-          setFormOpen(true);
-        }}
+        onEdit={setEditPart}
+        onAssign={setAssignPart}
+        onPurchase={setPurchasePart}
+        onStorageHistory={openStorageHistory}
       />
 
       <Pagination page={page} pageSize={pageSize} total={total} />
@@ -75,15 +98,40 @@ export function PartsClient({
         onOpenChange={(open) => !open && setDetail(null)}
       />
       <PartFormSheet
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        editPart={editPart}
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        usedBarcodes={usedBarcodes}
+        usedAddresses={usedAddresses}
       />
-      <FilterSheet
-        open={filterOpen}
-        onOpenChange={setFilterOpen}
-        makers={makers}
-        categories={categories}
+      <EditPartSheet
+        key={`edit-${editPart?.id ?? "none"}`}
+        open={!!editPart}
+        onOpenChange={(open) => !open && setEditPart(null)}
+        part={editPart}
+      />
+      <AssignLocationSheet
+        key={`assign-${assignPart?.id ?? "none"}`}
+        open={!!assignPart}
+        onOpenChange={(open) => !open && setAssignPart(null)}
+        part={assignPart}
+        usedBarcodes={usedBarcodes}
+        usedAddresses={usedAddresses}
+      />
+      <PurchasePartSheet
+        key={`purchase-${purchasePart?.id ?? "none"}`}
+        open={!!purchasePart}
+        onOpenChange={(open) => !open && setPurchasePart(null)}
+        part={purchasePart}
+      />
+      <StorageHistoryDialog
+        data={storageHistory}
+        onOpenChange={(open) => !open && setStorageHistory(null)}
+      />
+      <ImportDialog open={importOpen} onOpenChange={setImportOpen} />
+      <ExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        rows={rows}
       />
     </>
   );

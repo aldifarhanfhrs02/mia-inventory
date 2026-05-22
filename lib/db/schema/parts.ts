@@ -42,6 +42,9 @@ export const parts = pgTable(
     stdStock: integer("std_stock"),
     maxStock: integer("max_stock"),
 
+    // Unit price in Rupiah (used by the table, forms, and purchase estimate).
+    price: integer("price"),
+
     status: varchar("status", { length: 20 })
       .$type<PartStatus>()
       .notNull()
