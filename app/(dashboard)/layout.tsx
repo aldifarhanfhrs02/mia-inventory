@@ -1,20 +1,16 @@
+import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
-import type { UserRole } from "@/lib/types";
+import { getServerSession } from "@/lib/auth/session";
 
-/**
- * Authenticated shell layout. Phase 3 replaces the placeholder user with the
- * real session from getServerSession() and adds the middleware auth guard.
- */
-const PLACEHOLDER_USER: { nik: string; fullName: string; role: UserRole } = {
-  nik: "ADM001",
-  fullName: "Aldi Nugroho",
-  role: "admin",
-};
-
-export default function DashboardLayout({
+/** Authenticated shell. Guards the session and the forced password change. */
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <AppShell user={PLACEHOLDER_USER}>{children}</AppShell>;
+  const session = await getServerSession();
+  if (!session) redirect("/login");
+  if (session.user.mustChangePassword) redirect("/change-password");
+
+  return <AppShell user={session.user}>{children}</AppShell>;
 }

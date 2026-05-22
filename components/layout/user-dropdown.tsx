@@ -2,6 +2,8 @@
 
 import { ChevronDown, LogOut, UserCircle } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { signOut } from "@/lib/auth/actions";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,14 +17,20 @@ import type { UserRole } from "@/lib/types";
 
 interface UserDropdownProps {
   user: { nik: string; fullName: string; role: UserRole };
-  /** Wired to the real sign-out action in Phase 3. */
-  onLogout?: () => void;
 }
 
 const initialOf = (name: string) => name.trim().charAt(0).toUpperCase() || "?";
 
 /** Avatar + name button with an account / logout menu. */
-export function UserDropdown({ user, onLogout }: UserDropdownProps) {
+export function UserDropdown({ user }: UserDropdownProps) {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await signOut();
+    router.replace("/login");
+    router.refresh();
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-accent/50">
@@ -56,7 +64,7 @@ export function UserDropdown({ user, onLogout }: UserDropdownProps) {
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onClick={onLogout}
+          onClick={handleLogout}
           className="text-destructive focus:text-destructive"
         >
           <LogOut className="mr-2 h-4 w-4" />
