@@ -2,6 +2,7 @@
 
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import {
   activityLogs,
@@ -74,7 +75,7 @@ export async function getMovements(params: GetMovementsParams): Promise<{
   summary: { countIn: number; countOut: number; qtyIn: number; qtyOut: number };
 }> {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) redirect("/login");
 
   const raw = await db
     .select({

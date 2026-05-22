@@ -1,5 +1,6 @@
 import "server-only";
 import { sql } from "drizzle-orm";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getServerSession } from "@/lib/auth/session";
 import { computeAlertSeverity, computeStockStatus } from "@/lib/utils/stock";
@@ -55,7 +56,7 @@ const emptyBreakdown = (type: PartType): TypeBreakdown => ({
  */
 export async function getDashboardData(): Promise<DashboardData> {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) redirect("/login");
 
   const partRowsRaw = await db.execute(sql`
     SELECT

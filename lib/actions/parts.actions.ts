@@ -2,6 +2,7 @@
 
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import {
   activityLogs,
@@ -109,7 +110,7 @@ export async function getParts(params: GetPartsParams): Promise<{
   pageSize: number;
 }> {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) redirect("/login");
 
   let rows = await loadPartsWithStock();
   const {

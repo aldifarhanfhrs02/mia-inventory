@@ -1,5 +1,6 @@
 import "server-only";
 import { sql } from "drizzle-orm";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getServerSession } from "@/lib/auth/session";
 import { formatStorageAddr } from "@/lib/utils/barcode";
@@ -12,7 +13,7 @@ import type { PartWithStock } from "@/lib/types";
  */
 export async function getStockTakingRows(): Promise<PartWithStock[]> {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) redirect("/login");
 
   const rows = await db.execute(sql`
     SELECT

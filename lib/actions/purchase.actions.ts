@@ -2,6 +2,7 @@
 
 import { eq, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { activityLogs, parts, purchaseRecords } from "@/lib/db/schema";
 import { getServerSession, isAdmin } from "@/lib/auth/session";
@@ -89,7 +90,7 @@ export async function getStorageHistory(addr: string): Promise<{
   history: StorageHistoryRow[];
 }> {
   const session = await getServerSession();
-  if (!session) throw new Error("Unauthorized");
+  if (!session) redirect("/login");
 
   const rows = await db
     .select({
