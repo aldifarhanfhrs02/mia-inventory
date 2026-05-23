@@ -79,6 +79,7 @@ export interface StorageHistoryRow {
   partCode: string;
   partName: string;
   status: "active" | "inactive" | "unassigned";
+  barcode: string | null;
 }
 
 /**
@@ -97,6 +98,7 @@ export async function getStorageHistory(addr: string): Promise<{
       partCode: parts.partCode,
       partName: parts.partName,
       status: parts.status,
+      barcode: parts.barcode,
       storageType: parts.storageType,
       storageNumber: parts.storageNumber,
       storageBox: parts.storageBox,
@@ -119,6 +121,7 @@ export async function getStorageHistory(addr: string): Promise<{
       partCode: r.partCode,
       partName: r.partName,
       status: r.status,
+      barcode: r.barcode,
     }));
 
   return {

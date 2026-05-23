@@ -39,7 +39,6 @@ const COLS: { key: string; label: string; sortable: boolean; align?: "right" }[]
     { key: "type", label: "Type", sortable: true },
     { key: "category", label: "Category", sortable: true },
     { key: "storageAddr", label: "Storage", sortable: true },
-    { key: "barcode", label: "Barcode", sortable: true },
     { key: "price", label: "Price", sortable: true, align: "right" },
     { key: "currentStock", label: "Stock", sortable: true, align: "right" },
     { key: "unit", label: "Unit", sortable: false },
@@ -169,9 +168,6 @@ export function PartsTable({
                       {p.storageAddr}
                     </button>
                   )}
-                </TableCell>
-                <TableCell className="font-mono text-xs">
-                  {p.barcode ?? "—"}
                 </TableCell>
                 <TableCell className="text-right font-mono text-xs">
                   {formatPrice(p.price)}

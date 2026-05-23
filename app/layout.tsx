@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Roboto_Mono } from "next/font/google";
+import {
+  Libre_Barcode_39,
+  Plus_Jakarta_Sans,
+  Roboto_Mono,
+} from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -17,6 +21,13 @@ const mono = Roboto_Mono({
   weight: ["400", "500"],
 });
 
+// Code 39 barcode font — wrap the value in *…* to render a scannable barcode.
+const barcode = Libre_Barcode_39({
+  variable: "--font-barcode",
+  subsets: ["latin"],
+  weight: "400",
+});
+
 export const metadata: Metadata = {
   title: "MIA Inventory",
   description:
@@ -32,7 +43,7 @@ export default function RootLayout({
     <html
       lang="id"
       suppressHydrationWarning
-      className={`${sans.variable} ${mono.variable}`}
+      className={`${sans.variable} ${mono.variable} ${barcode.variable}`}
     >
       <body className="font-sans antialiased">
         <ThemeProvider
