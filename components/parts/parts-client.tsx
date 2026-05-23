@@ -15,6 +15,7 @@ import { PartFormSheet } from "./part-form-sheet";
 import { PartsTable } from "./parts-table";
 import { PartsToolbar } from "./parts-toolbar";
 import { PurchasePartSheet } from "./purchase-part-sheet";
+import { StockDetailDialog } from "./stock-detail-dialog";
 import {
   StorageHistoryDialog,
   type StorageHistoryData,
@@ -49,6 +50,7 @@ export function PartsClient({
   const [editPart, setEditPart] = useState<PartTableRow | null>(null);
   const [assignPart, setAssignPart] = useState<PartTableRow | null>(null);
   const [purchasePart, setPurchasePart] = useState<PartTableRow | null>(null);
+  const [stockPart, setStockPart] = useState<PartTableRow | null>(null);
   const [storageHistory, setStorageHistory] =
     useState<StorageHistoryData | null>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -89,6 +91,7 @@ export function PartsClient({
         onAssign={setAssignPart}
         onPurchase={setPurchasePart}
         onStorageHistory={openStorageHistory}
+        onStockClick={setStockPart}
       />
 
       <Pagination page={page} pageSize={pageSize} total={total} />
@@ -122,6 +125,10 @@ export function PartsClient({
         open={!!purchasePart}
         onOpenChange={(open) => !open && setPurchasePart(null)}
         part={purchasePart}
+      />
+      <StockDetailDialog
+        part={stockPart}
+        onOpenChange={(open) => !open && setStockPart(null)}
       />
       <StorageHistoryDialog
         data={storageHistory}

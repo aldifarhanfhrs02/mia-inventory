@@ -55,11 +55,11 @@ function describe(item: ActivityFeedItem) {
 export function TransactionLogFeed({ items }: { items: ActivityFeedItem[] }) {
   return (
     <Card className="flex h-full flex-col">
-      <CardHeader className="pb-3">
+      <CardHeader className="border-b pb-3">
         <CardTitle className="text-base">Log Transaksi</CardTitle>
         <p className="text-xs text-muted-foreground">10 aktivitas terbaru</p>
       </CardHeader>
-      <div className="flex-1 px-3">
+      <div className="flex-1 px-3 pt-3">
         {items.length === 0 && (
           <p className="py-8 text-center text-sm text-muted-foreground">
             Belum ada aktivitas.

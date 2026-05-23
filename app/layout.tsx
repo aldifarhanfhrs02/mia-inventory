@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { Roboto, Roboto_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, Roboto_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-// Google Sans is proprietary; the design tokens fall back to Roboto, which we
-// self-host here. Roboto Mono is used for codes, barcodes, and numeric columns.
-const sans = Roboto({
+// Use Plus Jakarta Sans for premium, modern, and clean typography.
+const sans = Plus_Jakarta_Sans({
   variable: "--font-sans",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],

@@ -85,8 +85,8 @@ export function Sidebar({ collapsed, onToggle, isAdmin }: SidebarProps) {
         <Image
           src="/Epson_logo.svg"
           alt="Epson"
-          width={collapsed ? 44 : 132}
-          height={collapsed ? 13 : 40}
+          width={collapsed ? 36 : 100}
+          height={collapsed ? 11 : 30}
           className="h-auto dark:brightness-0 dark:invert"
           priority
         />
@@ -99,17 +99,18 @@ export function Sidebar({ collapsed, onToggle, isAdmin }: SidebarProps) {
         {renderItem(ACCOUNT_NAV)}
       </nav>
 
+      {!collapsed && (
+        <div className="px-4 py-2">
+          <p className="text-sm font-semibold text-sidebar-accent-foreground">
+            MIA Inventory
+          </p>
+          <p className="text-xs text-sidebar-foreground">
+            PT Indonesia Epson Industry
+          </p>
+        </div>
+      )}
+
       <div className="border-t border-sidebar-border p-2">
-        {!collapsed && (
-          <div className="px-2 pb-2">
-            <p className="text-sm font-semibold text-sidebar-accent-foreground">
-              MIA Inventory
-            </p>
-            <p className="text-xs text-sidebar-foreground">
-              PT Indonesia Epson Industry
-            </p>
-          </div>
-        )}
         <button
           type="button"
           onClick={onToggle}

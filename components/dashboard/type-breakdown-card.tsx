@@ -44,8 +44,7 @@ export function TypeBreakdownCard({ data }: { data: TypeBreakdown }) {
           meta.headerClass,
         )}
       >
-        <div className="flex items-center gap-2">
-          <Icon className="h-4 w-4" />
+        <div className="flex items-center">
           <span className="font-semibold">{meta.label}</span>
         </div>
         <span className="font-mono text-xs font-semibold">

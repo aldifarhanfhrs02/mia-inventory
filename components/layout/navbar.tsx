@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, PanelLeft, RefreshCw } from "lucide-react";
+import { Bell, Menu, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -46,10 +46,10 @@ export function Navbar({ user, onToggleSidebar }: NavbarProps) {
         aria-label="Collapse sidebar"
         title="Collapse sidebar (Ctrl+B)"
       >
-        <PanelLeft className="h-[18px] w-[18px]" />
+        <Menu className="h-5 w-5" />
       </Button>
 
-      <p className="truncate text-lg font-medium">
+      <p className="truncate text-xl md:text-2xl font-medium tracking-tight">
         {greeting()}, <strong>{firstName}</strong> 👋
       </p>
 

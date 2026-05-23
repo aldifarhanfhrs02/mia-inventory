@@ -25,6 +25,8 @@ interface PartsTableProps {
   onAssign: (part: PartTableRow) => void;
   onPurchase: (part: PartTableRow) => void;
   onStorageHistory: (addr: string) => void;
+  /** Stock cell click → opens the Min/Std/Max detail dialog. */
+  onStockClick: (part: PartTableRow) => void;
 }
 
 /** Sortable column headers — key matches a PartTableRow field. */
@@ -40,9 +42,6 @@ const COLS: { key: string; label: string; sortable: boolean; align?: "right" }[]
     { key: "barcode", label: "Barcode", sortable: true },
     { key: "price", label: "Price", sortable: true, align: "right" },
     { key: "currentStock", label: "Stock", sortable: true, align: "right" },
-    { key: "minStock", label: "Min", sortable: true, align: "right" },
-    { key: "stdStock", label: "Std", sortable: true, align: "right" },
-    { key: "maxStock", label: "Max", sortable: true, align: "right" },
     { key: "unit", label: "Unit", sortable: false },
     { key: "stockStatus", label: "Status", sortable: true },
     { key: "updatedByName", label: "Updated By", sortable: false },
@@ -50,7 +49,7 @@ const COLS: { key: string; label: string; sortable: boolean; align?: "right" }[]
     { key: "_actions", label: "", sortable: false },
   ];
 
-/** Master Part table — 18 columns, sortable headers, color-coded stock. */
+/** Master Part table — sortable headers, color-coded stock, clickable cells. */
 export function PartsTable({
   data,
   startIndex,
@@ -60,6 +59,7 @@ export function PartsTable({
   onAssign,
   onPurchase,
   onStorageHistory,
+  onStockClick,
 }: PartsTableProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -166,22 +166,18 @@ export function PartsTable({
                 <TableCell className="text-right font-mono text-xs">
                   {formatPrice(p.price)}
                 </TableCell>
-                <TableCell
-                  className={cn(
-                    "text-right font-mono font-semibold",
-                    stockColor,
-                  )}
-                >
-                  {p.currentStock}
-                </TableCell>
-                <TableCell className="text-right font-mono text-chart-4">
-                  {p.minStock}
-                </TableCell>
-                <TableCell className="text-right font-mono text-chart-1">
-                  {p.stdStock ?? "—"}
-                </TableCell>
-                <TableCell className="text-right font-mono text-chart-2">
-                  {p.maxStock ?? "—"}
+                <TableCell className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => onStockClick(p)}
+                    title="Lihat Min / Std / Max"
+                    className={cn(
+                      "font-mono font-semibold hover:underline",
+                      stockColor,
+                    )}
+                  >
+                    {p.currentStock}
+                  </button>
                 </TableCell>
                 <TableCell>{p.unit}</TableCell>
                 <TableCell>

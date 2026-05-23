@@ -38,14 +38,14 @@ const SEV: Record<
 export function AlertStockWidget({ items }: { items: AlertStockItem[] }) {
   return (
     <Card className="flex h-full flex-col">
-      <CardHeader className="pb-3">
+      <CardHeader className="border-b pb-3">
         <CardTitle className="text-base">⚠ Alert Stok</CardTitle>
         <p className="text-xs text-muted-foreground">
           {items.length} part perlu perhatian
         </p>
       </CardHeader>
 
-      <div className="flex-1 px-3">
+      <div className="flex-1 px-3 pt-3">
         {items.length === 0 && (
           <p className="py-8 text-center text-sm text-muted-foreground">
             Semua stok dalam kondisi baik 🎉
