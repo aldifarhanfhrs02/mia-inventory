@@ -75,26 +75,36 @@ export function PartsTable({
   };
 
   return (
-    <div className="overflow-x-auto rounded-lg border">
-      <Table>
+    <div className="overflow-x-auto rounded-lg border bg-card">
+      <Table className="[&_td]:px-3 [&_td]:py-3 [&_th]:px-3">
+
         <TableHeader>
-          <TableRow>
+          <TableRow className="border-b bg-muted/40 hover:bg-muted/40">
             {COLS.map((c) => (
               <TableHead
                 key={c.key}
                 onClick={c.sortable ? () => toggleSort(c.key) : undefined}
                 className={cn(
-                  "whitespace-nowrap",
+                  "h-11 whitespace-nowrap px-3 text-[12px] font-medium text-muted-foreground",
                   c.align === "right" && "text-right",
                   c.sortable && "cursor-pointer select-none hover:text-foreground",
                 )}
               >
-                {c.label}
-                {c.sortable && (
-                  <span className="ml-1 text-xs text-muted-foreground">
-                    {sort === c.key ? (dir === "asc" ? "↑" : "↓") : "↕"}
-                  </span>
-                )}
+                <span className="inline-flex items-center gap-1">
+                  {c.label}
+                  {c.sortable && (
+                    <span
+                      className={cn(
+                        "text-[10px] leading-none",
+                        sort === c.key
+                          ? "text-foreground"
+                          : "text-muted-foreground/60",
+                      )}
+                    >
+                      {sort === c.key ? (dir === "asc" ? "▲" : "▼") : "⇅"}
+                    </span>
+                  )}
+                </span>
               </TableHead>
             ))}
           </TableRow>

@@ -70,16 +70,18 @@ function FilterDropdown({
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          size="sm"
-          className={cn(selected.length > 0 && "border-primary text-primary")}
+          className={cn(
+            "h-10 gap-1.5 rounded-lg px-3.5",
+            selected.length > 0 && "border-primary text-primary",
+          )}
         >
           {label}
           {selected.length > 0 && (
-            <span className="ml-1 rounded-full bg-primary px-1.5 text-xs text-primary-foreground">
+            <span className="rounded-full bg-primary px-1.5 text-xs text-primary-foreground">
               {selected.length}
             </span>
           )}
-          <ChevronDown className="ml-1 h-3.5 w-3.5 opacity-60" />
+          <ChevronDown className="h-3.5 w-3.5 opacity-60" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -184,13 +186,13 @@ export function PartsToolbar({
   return (
     <div className="mb-4 space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[240px] flex-1">
-          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <div className="relative min-w-[260px] flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari part name, code, barcode…"
-            className="pl-8"
+            className="h-10 rounded-lg pl-9"
           />
         </div>
 
@@ -222,10 +224,13 @@ export function PartsToolbar({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <ArrowUpDown className="mr-1 h-3.5 w-3.5" />
+            <Button
+              variant="outline"
+              className="h-10 gap-1.5 rounded-lg px-3.5"
+            >
+              <ArrowUpDown className="h-3.5 w-3.5" />
               {SORT_OPTIONS.find((o) => o.value === sort)?.label ?? "Sort"}
-              <span className="ml-1 text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 {dir === "asc" ? "↑" : "↓"}
               </span>
             </Button>
@@ -244,16 +249,24 @@ export function PartsToolbar({
 
         {isAdmin && (
           <div className="ml-auto flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={onImport}>
-              <Upload className="mr-1 h-3.5 w-3.5" />
+            <Button
+              variant="outline"
+              className="h-10 rounded-lg px-4"
+              onClick={onImport}
+            >
+              <Upload className="mr-1.5 h-4 w-4" />
               Import
             </Button>
-            <Button variant="outline" size="sm" onClick={onExport}>
-              <Download className="mr-1 h-3.5 w-3.5" />
+            <Button
+              variant="outline"
+              className="h-10 rounded-lg px-4"
+              onClick={onExport}
+            >
+              <Download className="mr-1.5 h-4 w-4" />
               Export
             </Button>
-            <Button size="sm" onClick={onAdd}>
-              <Plus className="mr-1 h-4 w-4" />
+            <Button className="h-10 rounded-lg px-4" onClick={onAdd}>
+              <Plus className="mr-1.5 h-4 w-4" />
               Tambah Part
             </Button>
           </div>
