@@ -1,27 +1,19 @@
 import type { Metadata } from "next";
-import {
-  Libre_Barcode_39,
-  Plus_Jakarta_Sans,
-  Roboto_Mono,
-} from "next/font/google";
+import { Inter, Libre_Barcode_39 } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-// Use Plus Jakarta Sans for premium, modern, and clean typography.
-const sans = Plus_Jakarta_Sans({
+// Inter — single sans-serif used across the entire UI. Numeric alignment is
+// handled via the CSS `tabular-nums` utility, not a separate mono typeface.
+// Libre Barcode 39 — strictly scoped to the barcode preview in the storage
+// detail dialog (the only place we actually render a scannable barcode).
+const sans = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600"],
 });
 
-const mono = Roboto_Mono({
-  variable: "--font-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
-});
-
-// Code 39 barcode font — wrap the value in *…* to render a scannable barcode.
 const barcode = Libre_Barcode_39({
   variable: "--font-barcode",
   subsets: ["latin"],
@@ -43,7 +35,7 @@ export default function RootLayout({
     <html
       lang="id"
       suppressHydrationWarning
-      className={`${sans.variable} ${mono.variable} ${barcode.variable}`}
+      className={`${sans.variable} ${barcode.variable}`}
     >
       <body className="font-sans antialiased">
         <ThemeProvider

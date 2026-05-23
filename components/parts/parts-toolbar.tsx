@@ -1,115 +1,39 @@
 "use client";
 
 import {
-  ArrowUpDown,
-  ChevronDown,
-  Download,
+  ArrowDownToLine,
+  FileSpreadsheet,
+  Filter,
   Plus,
   Search,
-  Upload,
   X,
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/utils/format";
+import { PartsFilterDialog } from "./parts-filter-dialog";
 
-interface Option {
-  value: string;
-  label: string;
-}
+const ARRAY_KEYS = ["status", "type", "maker", "category"] as const;
+const DATE_KEYS = ["updatedFrom", "updatedTo"] as const;
 
-const STATUS_OPTIONS: Option[] = [
-  { value: "available", label: "Available" },
-  { value: "low_stock", label: "Low Stock" },
-  { value: "out_of_stock", label: "Out of Stock" },
-  { value: "unassigned", label: "Unassigned" },
-  { value: "inactive", label: "Inactive" },
-];
-const TYPE_OPTIONS: Option[] = [
-  { value: "electrical", label: "Electrical" },
-  { value: "mechanical", label: "Mechanical" },
-  { value: "fabrication", label: "Fabrication" },
-];
-const SORT_OPTIONS: Option[] = [
-  { value: "partName", label: "Part Name" },
-  { value: "partCode", label: "Part Code" },
-  { value: "maker", label: "Maker" },
-  { value: "currentStock", label: "Stock" },
-  { value: "price", label: "Price" },
-  { value: "updatedAt", label: "Updated At" },
-];
+/** Pretty label for an active filter chip. */
+const FILTER_LABEL: Record<string, string> = {
+  status: "Status",
+  type: "Type",
+  maker: "Maker",
+  category: "Category",
+};
 
-const FILTER_KEYS = ["status", "type", "maker", "category"] as const;
-
-/** Multi-select checkbox filter dropdown with a count badge. */
-function FilterDropdown({
-  label,
-  options,
-  selected,
-  onToggle,
-  onReset,
-}: {
-  label: string;
-  options: Option[];
-  selected: string[];
-  onToggle: (value: string) => void;
-  onReset: () => void;
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          className={cn(
-            "h-10 gap-1.5 rounded-lg px-3.5",
-            selected.length > 0 && "border-primary text-primary",
-          )}
-        >
-          {label}
-          {selected.length > 0 && (
-            <span className="rounded-full bg-primary px-1.5 text-xs text-primary-foreground">
-              {selected.length}
-            </span>
-          )}
-          <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="start"
-        className="max-h-72 w-52 overflow-y-auto"
-      >
-        {selected.length > 0 && (
-          <>
-            <DropdownMenuItem onClick={onReset} className="text-primary">
-              Reset filter
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-          </>
-        )}
-        {options.map((o) => (
-          <DropdownMenuCheckboxItem
-            key={o.value}
-            checked={selected.includes(o.value)}
-            onSelect={(e) => e.preventDefault()}
-            onCheckedChange={() => onToggle(o.value)}
-          >
-            {o.label}
-          </DropdownMenuCheckboxItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
+const STATUS_LABEL: Record<string, string> = {
+  available: "Available",
+  low_stock: "Low Stock",
+  out_of_stock: "Out of Stock",
+  unassigned: "Unassigned",
+  inactive: "Inactive",
+};
 
 interface PartsToolbarProps {
   isAdmin: boolean;
@@ -120,7 +44,7 @@ interface PartsToolbarProps {
   onExport: () => void;
 }
 
-/** Master Part toolbar — search, inline multi-select filters, sort, chips. */
+/** Master Part toolbar — search, one "Filter" button (all filters), sort, chips. */
 export function PartsToolbar({
   isAdmin,
   makers,
@@ -133,6 +57,7 @@ export function PartsToolbar({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(searchParams.get("search") ?? "");
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const setParam = (key: string, value: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -156,7 +81,7 @@ export function PartsToolbar({
     return raw ? raw.split(",").filter(Boolean) : [];
   };
 
-  const toggleFilter = (key: string, value: string) => {
+  const toggleFilterValue = (key: string, value: string) => {
     const current = selectedOf(key);
     const next = current.includes(value)
       ? current.filter((v) => v !== value)
@@ -164,21 +89,19 @@ export function PartsToolbar({
     setParam(key, next.length ? next.join(",") : null);
   };
 
-  const sort = searchParams.get("sort") ?? "partName";
-  const dir = searchParams.get("dir") === "desc" ? "desc" : "asc";
-  const setSort = (key: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("sort", key);
-    params.set("dir", sort === key && dir === "asc" ? "desc" : "asc");
-    router.push(`${pathname}?${params.toString()}`);
-  };
-
-  const chips = FILTER_KEYS.flatMap((key) =>
+  // Active filter chips — array filters + the date range.
+  const updatedFrom = searchParams.get("updatedFrom") ?? "";
+  const updatedTo = searchParams.get("updatedTo") ?? "";
+  const arrayChips = ARRAY_KEYS.flatMap((key) =>
     selectedOf(key).map((value) => ({ key, value })),
   );
+  const totalActive =
+    arrayChips.length + (updatedFrom ? 1 : 0) + (updatedTo ? 1 : 0);
+
   const clearAll = () => {
     const params = new URLSearchParams(searchParams.toString());
-    for (const k of FILTER_KEYS) params.delete(k);
+    for (const k of ARRAY_KEYS) params.delete(k);
+    for (const k of DATE_KEYS) params.delete(k);
     params.delete("page");
     router.push(`${pathname}?${params.toString()}`);
   };
@@ -186,7 +109,7 @@ export function PartsToolbar({
   return (
     <div className="mb-4 space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[260px] flex-1">
+        <div className="relative w-[280px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
@@ -196,56 +119,23 @@ export function PartsToolbar({
           />
         </div>
 
-        {(
-          [
-            { key: "status", label: "Status", options: STATUS_OPTIONS },
-            { key: "type", label: "Type", options: TYPE_OPTIONS },
-            {
-              key: "maker",
-              label: "Maker",
-              options: makers.map((m) => ({ value: m, label: m })),
-            },
-            {
-              key: "category",
-              label: "Category",
-              options: categories.map((c) => ({ value: c, label: c })),
-            },
-          ] as const
-        ).map((f) => (
-          <FilterDropdown
-            key={f.key}
-            label={f.label}
-            options={f.options}
-            selected={selectedOf(f.key)}
-            onToggle={(value) => toggleFilter(f.key, value)}
-            onReset={() => setParam(f.key, null)}
-          />
-        ))}
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              className="h-10 gap-1.5 rounded-lg px-3.5"
-            >
-              <ArrowUpDown className="h-3.5 w-3.5" />
-              {SORT_OPTIONS.find((o) => o.value === sort)?.label ?? "Sort"}
-              <span className="text-xs text-muted-foreground">
-                {dir === "asc" ? "↑" : "↓"}
-              </span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-44">
-            {SORT_OPTIONS.map((o) => (
-              <DropdownMenuItem key={o.value} onClick={() => setSort(o.value)}>
-                {o.label}
-                {sort === o.value && (
-                  <span className="ml-auto">{dir === "asc" ? "↑" : "↓"}</span>
-                )}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* SINGLE FILTER BUTTON — opens the all-filters dialog */}
+        <Button
+          variant="outline"
+          onClick={() => setFilterOpen(true)}
+          className={cn(
+            "h-10 gap-1.5 rounded-lg px-3.5",
+            totalActive > 0 && "border-primary text-primary",
+          )}
+        >
+          <Filter className="h-3.5 w-3.5" />
+          Filter
+          {totalActive > 0 && (
+            <span className="rounded-full bg-primary px-1.5 text-xs text-primary-foreground">
+              {totalActive}
+            </span>
+          )}
+        </Button>
 
         {isAdmin && (
           <div className="ml-auto flex items-center gap-2">
@@ -254,7 +144,7 @@ export function PartsToolbar({
               className="h-10 rounded-lg px-4"
               onClick={onImport}
             >
-              <Upload className="mr-1.5 h-4 w-4" />
+              <ArrowDownToLine className="mr-1.5 h-4 w-4" />
               Import
             </Button>
             <Button
@@ -262,7 +152,7 @@ export function PartsToolbar({
               className="h-10 rounded-lg px-4"
               onClick={onExport}
             >
-              <Download className="mr-1.5 h-4 w-4" />
+              <FileSpreadsheet className="mr-1.5 h-4 w-4" />
               Export
             </Button>
             <Button className="h-10 rounded-lg px-4" onClick={onAdd}>
@@ -273,19 +163,41 @@ export function PartsToolbar({
         )}
       </div>
 
-      {chips.length > 0 && (
+      {/* Active filter chips */}
+      {totalActive > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          {chips.map((c) => (
+          {arrayChips.map((c) => (
             <button
               key={`${c.key}-${c.value}`}
               type="button"
-              onClick={() => toggleFilter(c.key, c.value)}
+              onClick={() => toggleFilterValue(c.key, c.value)}
               className="flex items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground hover:bg-accent/70"
             >
-              {c.key === "status" ? "Status" : c.key}: {c.value}
+              {FILTER_LABEL[c.key] ?? c.key}:{" "}
+              {c.key === "status" ? (STATUS_LABEL[c.value] ?? c.value) : c.value}
               <X className="h-3 w-3" />
             </button>
           ))}
+          {updatedFrom && (
+            <button
+              type="button"
+              onClick={() => setParam("updatedFrom", null)}
+              className="flex items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground hover:bg-accent/70"
+            >
+              Updated ≥ {formatDate(updatedFrom)}
+              <X className="h-3 w-3" />
+            </button>
+          )}
+          {updatedTo && (
+            <button
+              type="button"
+              onClick={() => setParam("updatedTo", null)}
+              className="flex items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground hover:bg-accent/70"
+            >
+              Updated ≤ {formatDate(updatedTo)}
+              <X className="h-3 w-3" />
+            </button>
+          )}
           <button
             type="button"
             onClick={clearAll}
@@ -295,6 +207,13 @@ export function PartsToolbar({
           </button>
         </div>
       )}
+
+      <PartsFilterDialog
+        open={filterOpen}
+        onOpenChange={setFilterOpen}
+        makers={makers}
+        categories={categories}
+      />
     </div>
   );
 }

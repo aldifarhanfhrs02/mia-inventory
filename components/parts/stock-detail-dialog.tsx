@@ -41,7 +41,7 @@ export function StockDetailDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs text-muted-foreground">
+            <span className="tabular-nums text-xs text-muted-foreground">
               {p?.partCode}
             </span>
             {p && (
@@ -68,7 +68,7 @@ export function StockDetailDialog({
                 </span>
                 <span
                   className={cn(
-                    "font-mono text-2xl font-bold",
+                    "tabular-nums text-2xl font-bold",
                     p.currentStock === 0
                       ? "text-chart-4"
                       : p.currentStock < p.minStock
@@ -109,7 +109,7 @@ export function StockDetailDialog({
                   </>
                 )}
               </div>
-              <div className="mt-1 flex justify-between font-mono text-[10px] text-muted-foreground">
+              <div className="mt-1 flex justify-between tabular-nums text-[10px] text-muted-foreground">
                 <span>0</span>
                 <span className="text-chart-2">
                   Max {p.maxStock ?? "—"}
@@ -157,7 +157,7 @@ function Threshold({
   return (
     <div className="rounded-md border p-2 text-center">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={cn("font-mono text-base font-semibold", colorClass)}>
+      <p className={cn("tabular-nums text-base font-semibold", colorClass)}>
         {value ?? "—"}
       </p>
     </div>

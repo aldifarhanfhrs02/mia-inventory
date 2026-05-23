@@ -34,6 +34,9 @@ interface GetPartsParams {
   status?: string[];
   maker?: string[];
   category?: string[];
+  /** ISO date strings (YYYY-MM-DD) — inclusive range on `updatedAt`. */
+  updatedFrom?: string;
+  updatedTo?: string;
   page?: number;
   sort?: string;
   dir?: "asc" | "desc";
@@ -71,6 +74,8 @@ async function loadPartsWithStock(): Promise<PartTableRow[]> {
       maker: String(r.maker),
       type: r.type as PartWithStock["type"],
       category: String(r.category),
+      partClass:
+        (r.part_class as PartWithStock["partClass"]) ?? "consumable",
       unit: r.unit as PartWithStock["unit"],
       description: (r.description as string | null) ?? null,
       remarks: (r.remarks as string | null) ?? null,
@@ -119,6 +124,8 @@ export async function getParts(params: GetPartsParams): Promise<{
     status = [],
     maker = [],
     category = [],
+    updatedFrom = "",
+    updatedTo = "",
     page = 1,
     sort = "partName",
     dir = "asc",
@@ -153,6 +160,16 @@ export async function getParts(params: GetPartsParams): Promise<{
         s === "inactive" ? p.status === "inactive" : p.stockStatus === s,
       ),
     );
+  }
+  if (updatedFrom) {
+    const from = new Date(updatedFrom);
+    from.setHours(0, 0, 0, 0);
+    rows = rows.filter((p) => new Date(p.updatedAt) >= from);
+  }
+  if (updatedTo) {
+    const to = new Date(updatedTo);
+    to.setHours(23, 59, 59, 999);
+    rows = rows.filter((p) => new Date(p.updatedAt) <= to);
   }
 
   rows.sort((a, b) => {
@@ -286,6 +303,7 @@ export async function createPart(
           maker: v.maker,
           type: v.type,
           category: v.category,
+          partClass: v.partClass,
           unit: v.unit as never,
           description: v.description ?? null,
           remarks: v.remarks ?? null,
@@ -364,6 +382,7 @@ export async function updatePart(
           maker: v.maker,
           type: v.type,
           category: v.category,
+          partClass: v.partClass,
           unit: v.unit as never,
           description: v.description ?? null,
           remarks: v.remarks ?? null,
@@ -539,11 +558,45 @@ export interface ImportRow {
   partName: string;
   maker: string;
   type?: string;
+  partClass?: string;
   category?: string;
   unit?: string;
+  price?: number | null;
+  initialStock?: number | null;
+  minStock?: number | null;
+  stdStock?: number | null;
+  maxStock?: number | null;
+  description?: string;
+  remarks?: string;
+  /** Optional storage location — all 4 must be present together. */
+  storageType?: string;
+  storageNumber?: number | null;
+  storageBox?: number | null;
+  storageBoxKecil?: number | null;
 }
 
-/** Bulk-import parts. Duplicate part codes are skipped. Admin only. */
+const VALID_TYPES = ["Electrical", "Mechanical", "Fabrication"] as const;
+const VALID_CLASSES = [
+  "consumable",
+  "existing_project",
+  "new_part",
+] as const;
+const VALID_UNITS = [
+  "pcs",
+  "set",
+  "mtr",
+  "kg",
+  "lbr",
+  "btg",
+  "rol",
+  "pak",
+] as const;
+
+/**
+ * Bulk-import parts. Each row may include a storage location (all four fields)
+ * and an `initialStock` — when present, an INITIAL movement is recorded so the
+ * computed current_stock matches. Duplicate part codes are skipped. Admin only.
+ */
 export async function importParts(
   rows: ImportRow[],
 ): Promise<ActionResult<{ created: number; skipped: number }>> {
@@ -551,9 +604,20 @@ export async function importParts(
   if (!session) return { ok: false, error: "Unauthorized" };
   if (!isAdmin(session)) return { ok: false, error: "Forbidden" };
 
-  const existing = await db.select({ partCode: parts.partCode }).from(parts);
+  const existing = await db
+    .select({
+      partCode: parts.partCode,
+      barcode: parts.barcode,
+      status: parts.status,
+    })
+    .from(parts)
+    .where(isNull(parts.deletedAt));
   const taken = new Set(existing.map((e) => e.partCode.toUpperCase()));
-  const TYPES = ["electrical", "mechanical", "fabrication"];
+  const usedBarcodes = new Set(
+    existing
+      .filter((e) => e.status === "active" && e.barcode)
+      .map((e) => e.barcode as string),
+  );
 
   let created = 0;
   let skipped = 0;
@@ -566,25 +630,101 @@ export async function importParts(
           continue;
         }
         taken.add(code.toUpperCase());
+
+        const type = VALID_TYPES.includes(
+          r.type as (typeof VALID_TYPES)[number],
+        )
+          ? r.type
+          : "Electrical";
+        const partClass = VALID_CLASSES.includes(
+          r.partClass as (typeof VALID_CLASSES)[number],
+        )
+          ? r.partClass
+          : "consumable";
+        const unit = VALID_UNITS.includes(
+          (r.unit ?? "") as (typeof VALID_UNITS)[number],
+        )
+          ? r.unit
+          : "pcs";
+        const minStock = Math.max(0, Number(r.minStock ?? 0) || 0);
+        const stdStock =
+          r.stdStock != null
+            ? Math.max(0, Number(r.stdStock) || 0)
+            : null;
+        const maxStock =
+          r.maxStock != null
+            ? Math.max(0, Number(r.maxStock) || 0)
+            : null;
+        // Price defaults to 0 when not provided (per spec).
+        const price =
+          r.price != null ? Math.max(0, Number(r.price) || 0) : 0;
+        const initialStock = Math.max(0, Number(r.initialStock ?? 0) || 0);
+
+        // Optional storage location — assign only when all four fields present
+        // AND the resulting barcode isn't already in use.
+        const sType = r.storageType?.trim();
+        const sNum = r.storageNumber;
+        const sBox = r.storageBox;
+        const sBK = r.storageBoxKecil;
+        const hasLoc =
+          !!sType &&
+          sNum != null &&
+          sNum > 0 &&
+          sBox != null &&
+          sBox > 0 &&
+          sBK != null &&
+          sBK > 0;
+        const barcode = hasLoc
+          ? generateBarcode(sType, sNum, sBox, sBK)
+          : null;
+        const locAvailable = barcode == null || !usedBarcodes.has(barcode);
+
         const [row] = await tx
           .insert(parts)
           .values({
             partCode: code,
             partName: r.partName.trim(),
             maker: r.maker.trim() || "—",
-            type: (TYPES.includes(r.type ?? "")
-              ? r.type
-              : "electrical") as never,
+            type: type as never,
             category: r.category?.trim() || "Uncategorized",
-            unit: (r.unit?.trim() || "PCS") as never,
-            minStock: 0,
-            status: "unassigned",
+            partClass: partClass as never,
+            unit: unit as never,
+            description: r.description?.trim() || null,
+            remarks: r.remarks?.trim() || null,
+            minStock,
+            stdStock,
+            maxStock,
+            price,
+            storageType: hasLoc && locAvailable ? (sType as never) : null,
+            storageNumber: hasLoc && locAvailable ? sNum : null,
+            storageBox: hasLoc && locAvailable ? sBox : null,
+            storageBoxKecil: hasLoc && locAvailable ? sBK : null,
+            barcode: hasLoc && locAvailable ? barcode : null,
+            status: hasLoc && locAvailable ? "active" : "unassigned",
             createdBy: session.user.id,
             updatedBy: session.user.id,
           })
           .returning({ id: parts.id });
+
+        if (hasLoc && locAvailable && barcode) {
+          usedBarcodes.add(barcode);
+        }
+
+        // Initial stock movement so computed current_stock matches.
+        if (initialStock > 0) {
+          await tx.insert(stockMovements).values({
+            partId: row.id,
+            type: "INITIAL",
+            quantity: initialStock,
+            stockBefore: 0,
+            stockAfter: initialStock,
+            requestor: session.user.fullName,
+            inputerNik: session.user.nik,
+          });
+        }
+
         await logActivity(tx, session.user.id, "IMPORT", row.id, {
-          after: { partCode: code },
+          after: { partCode: code, initialStock },
         });
         created++;
       }
@@ -594,6 +734,63 @@ export async function importParts(
   } catch {
     return { ok: false, error: "Gagal mengimpor part" };
   }
+}
+
+/**
+ * Every non-deleted part with computed stock — used by the export dialog when
+ * the user picks the "Semua part" scope (ignoring active table filters).
+ */
+export async function getAllPartsForExport(): Promise<PartTableRow[]> {
+  const session = await getServerSession();
+  if (!session) return [];
+  return loadPartsWithStock();
+}
+
+/**
+ * Snapshot used by the import dialog for client-side validation:
+ *   • existingCodes  — every non-deleted part code, to flag duplicates
+ *   • usedBarcodes   — barcodes already held by active parts (block conflicts)
+ *   • usedAddresses  — storage addresses already held by active parts
+ */
+export async function getImportContext(): Promise<{
+  existingCodes: string[];
+  usedBarcodes: string[];
+  usedAddresses: string[];
+}> {
+  const session = await getServerSession();
+  if (!session)
+    return { existingCodes: [], usedBarcodes: [], usedAddresses: [] };
+
+  const rows = await db
+    .select({
+      partCode: parts.partCode,
+      barcode: parts.barcode,
+      status: parts.status,
+      storageType: parts.storageType,
+      storageNumber: parts.storageNumber,
+      storageBox: parts.storageBox,
+      storageBoxKecil: parts.storageBoxKecil,
+    })
+    .from(parts)
+    .where(isNull(parts.deletedAt));
+
+  const active = rows.filter((r) => r.status === "active");
+  return {
+    existingCodes: rows.map((r) => r.partCode),
+    usedBarcodes: active
+      .map((r) => r.barcode)
+      .filter((b): b is string => !!b),
+    usedAddresses: active
+      .map((r) =>
+        formatStorageAddr(
+          r.storageType,
+          r.storageNumber,
+          r.storageBox,
+          r.storageBoxKecil,
+        ),
+      )
+      .filter((a) => a !== "—"),
+  };
 }
 
 /** Look up the display name for a user id (detail-sheet metadata). */

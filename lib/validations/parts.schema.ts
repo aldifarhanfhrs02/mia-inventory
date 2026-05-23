@@ -6,8 +6,11 @@ export const CreatePartSchema = z
     partName: z.string().min(1, "Part Name wajib diisi").max(200),
     partCode: z.string().min(1, "Part Code wajib diisi").max(50),
     maker: z.string().min(1, "Maker wajib diisi").max(100),
-    type: z.enum(["electrical", "mechanical", "fabrication"]),
+    type: z.enum(["Electrical", "Mechanical", "Fabrication"]),
     category: z.string().min(1, "Category wajib diisi").max(50),
+    partClass: z
+      .enum(["consumable", "existing_project", "new_part"])
+      .default("consumable"),
     unit: z.string().min(1, "Unit wajib diisi").max(20),
     description: z.string().max(500).optional(),
     remarks: z.string().max(500).optional(),
@@ -18,7 +21,7 @@ export const CreatePartSchema = z
     price: z.number().int().min(0).optional(),
     initialStock: z.number().int().min(0).default(0),
 
-    storageType: z.enum(["A", "B", "C", "D", "E"]).optional(),
+    storageType: z.enum(["A", "B"]).optional(),
     storageNumber: z.number().int().positive().optional(),
     storageBox: z.number().int().positive().optional(),
     storageBoxKecil: z.number().int().positive().optional(),
@@ -64,8 +67,11 @@ export const UpdatePartSchema = z
     partName: z.string().min(1, "Part Name wajib diisi").max(200),
     partCode: z.string().min(1, "Part Code wajib diisi").max(50),
     maker: z.string().min(1, "Maker wajib diisi").max(100),
-    type: z.enum(["electrical", "mechanical", "fabrication"]),
+    type: z.enum(["Electrical", "Mechanical", "Fabrication"]),
     category: z.string().min(1, "Category wajib diisi").max(50),
+    partClass: z
+      .enum(["consumable", "existing_project", "new_part"])
+      .default("consumable"),
     unit: z.string().min(1, "Unit wajib diisi").max(20),
     description: z.string().max(500).optional(),
     remarks: z.string().max(500).optional(),
@@ -73,7 +79,7 @@ export const UpdatePartSchema = z
     stdStock: z.number().int().min(0).optional(),
     maxStock: z.number().int().min(0).optional(),
     price: z.number().int().min(0).optional(),
-    storageType: z.enum(["A", "B", "C", "D", "E"]).optional(),
+    storageType: z.enum(["A", "B"]).optional(),
     storageNumber: z.number().int().positive().optional(),
     storageBox: z.number().int().positive().optional(),
     storageBoxKecil: z.number().int().positive().optional(),

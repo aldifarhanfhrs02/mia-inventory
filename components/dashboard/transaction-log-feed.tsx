@@ -30,7 +30,7 @@ function describe(item: ActivityFeedItem) {
       return (
         <>
           {" "}menambahkan stok {name}{" "}
-          <span className="ml-0.5 rounded bg-chart-2/15 px-1.5 py-0.5 font-mono text-xs font-semibold text-chart-2">
+          <span className="ml-0.5 rounded bg-chart-2/15 px-1.5 py-0.5 tabular-nums text-xs font-semibold text-chart-2">
             +{item.quantity}
           </span>
         </>
@@ -39,7 +39,7 @@ function describe(item: ActivityFeedItem) {
       return (
         <>
           {" "}mengambil {name}{" "}
-          <span className="ml-0.5 rounded bg-chart-4/15 px-1.5 py-0.5 font-mono text-xs font-semibold text-chart-4">
+          <span className="ml-0.5 rounded bg-chart-4/15 px-1.5 py-0.5 tabular-nums text-xs font-semibold text-chart-4">
             -{item.quantity}
           </span>
         </>

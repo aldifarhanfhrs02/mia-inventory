@@ -117,11 +117,11 @@ export function LoginForm() {
 
       <p className="mt-5 rounded-lg bg-muted px-3 py-2 text-center text-[11.5px] text-muted-foreground">
         Demo:{" "}
-        <code className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[11px] text-primary">
+        <code className="rounded bg-primary/10 px-1.5 py-0.5 tabular-nums text-[11px] text-primary">
           ADM001
         </code>{" "}
         /{" "}
-        <code className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[11px] text-primary">
+        <code className="rounded bg-primary/10 px-1.5 py-0.5 tabular-nums text-[11px] text-primary">
           admin123
         </code>
       </p>

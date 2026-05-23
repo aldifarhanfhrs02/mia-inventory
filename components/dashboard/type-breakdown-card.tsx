@@ -1,93 +1,124 @@
-import { Cog, Hammer, Zap, type LucideIcon } from "lucide-react";
+"use client";
+
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
+import { useAssetsVisible } from "@/lib/hooks/use-assets-visible";
 import { cn } from "@/lib/utils";
+import { formatPrice } from "@/lib/utils/format";
 import type { PartType, TypeBreakdown } from "@/lib/types";
 
-const META: Record<
-  PartType,
-  { label: string; Icon: LucideIcon; headerClass: string }
-> = {
-  electrical: {
-    label: "Electrical",
-    Icon: Zap,
-    headerClass: "bg-blue-500/15 text-blue-600 dark:text-blue-300",
-  },
-  mechanical: {
-    label: "Mechanical",
-    Icon: Cog,
-    headerClass: "bg-purple-500/15 text-purple-600 dark:text-purple-300",
-  },
-  fabrication: {
-    label: "Fabrication",
-    Icon: Hammer,
-    headerClass: "bg-teal-500/15 text-teal-600 dark:text-teal-300",
-  },
+const TYPE_LABEL: Record<PartType, string> = {
+  Electrical: "Electrical",
+  Mechanical: "Mechanical",
+  Fabrication: "Fabrication",
 };
 
-const ROWS = [
-  { key: "available", label: "Available", color: "bg-chart-2" },
-  { key: "lowStock", label: "Low Stock", color: "bg-chart-3" },
-  { key: "outOfStock", label: "Out of Stock", color: "bg-chart-4" },
-  { key: "unassigned", label: "Unassigned", color: "bg-chart-5" },
+/** Thin colored top-border so each card still reads as a distinct type. */
+const TYPE_ACCENT: Record<PartType, string> = {
+  Electrical: "border-t-blue-500",
+  Mechanical: "border-t-purple-500",
+  Fabrication: "border-t-teal-500",
+};
+
+/** Four stat cells per card — Available / Low / Out / Unassigned. */
+const STATS = [
+  {
+    key: "available",
+    short: "Available",
+    full: "Available",
+    accent: "bg-chart-2",
+    filter: "available",
+  },
+  {
+    key: "lowStock",
+    short: "Low",
+    full: "Low Stock",
+    accent: "bg-chart-3",
+    filter: "low_stock",
+  },
+  {
+    key: "outOfStock",
+    short: "Out",
+    full: "Out of Stock",
+    accent: "bg-chart-4",
+    filter: "out_of_stock",
+  },
+  {
+    key: "unassigned",
+    short: "Unassigned",
+    full: "Unassigned",
+    accent: "bg-slate-400",
+    filter: "unassigned",
+  },
 ] as const;
 
-/** Per-type breakdown card with mini progress bars. Rows link to Master Part. */
+/**
+ * Per-type breakdown card — clean 4-stat row, no decorative progress bars.
+ * Each stat is a Link to the Master Part page pre-filtered to its segment.
+ */
 export function TypeBreakdownCard({ data }: { data: TypeBreakdown }) {
-  const meta = META[data.type];
-  const Icon = meta.Icon;
+  const { visible, mounted } = useAssetsVisible();
+  const assetLabel =
+    data.totalAsset == null
+      ? "—"
+      : visible || !mounted
+        ? formatPrice(data.totalAsset)
+        : "Rp •••";
+
   return (
-    <Card className="overflow-hidden p-0">
-      <div
-        className={cn(
-          "flex items-center justify-between px-4 py-2.5",
-          meta.headerClass,
-        )}
-      >
-        <div className="flex items-center">
-          <span className="font-semibold">{meta.label}</span>
-        </div>
-        <span className="font-mono text-xs font-semibold">
+    <Card
+      className={cn(
+        "overflow-hidden border-t-[3px]",
+        TYPE_ACCENT[data.type],
+      )}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3">
+        <span className="text-sm font-semibold">{TYPE_LABEL[data.type]}</span>
+        <span className="text-xs text-muted-foreground tabular-nums">
           {data.total} parts
         </span>
       </div>
-      <div className="space-y-2.5 p-4">
-        {ROWS.map((r) => {
-          const val = data[r.key];
-          const pct = data.total > 0 ? (val / data.total) * 100 : 0;
+
+      {/* Stat grid */}
+      <div className="grid grid-cols-4 border-y bg-muted/20">
+        {STATS.map((s, i) => {
+          const value = data[s.key];
           return (
             <Link
-              key={r.key}
-              href={`/parts?type=${data.type}&status=${r.key === "lowStock" ? "low_stock" : r.key === "outOfStock" ? "out_of_stock" : r.key}`}
-              className="flex items-center gap-2.5 text-sm hover:opacity-80"
+              key={s.key}
+              href={`/parts?type=${data.type}&status=${s.filter}`}
+              title={`${s.full} — ${value} part`}
+              className={cn(
+                "flex flex-col items-center gap-1 px-2 py-3 transition-colors hover:bg-accent/40",
+                i < STATS.length - 1 && "border-r",
+              )}
             >
-              <span className={cn("h-2 w-2 rounded-full", r.color)} />
-              <span className="w-24 shrink-0 text-muted-foreground">
-                {r.label}
+              <span className="text-xl font-semibold tabular-nums text-foreground">
+                {value}
               </span>
-              <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                <span
-                  className={cn("block h-full rounded-full", r.color)}
-                  style={{ width: `${pct}%` }}
-                />
+              <span className="whitespace-nowrap text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                {s.short}
               </span>
-              <span className="w-6 text-right font-medium tabular-nums">
-                {val}
-              </span>
+              <span
+                className={cn("mt-0.5 h-[2px] w-6 rounded-full", s.accent)}
+              />
             </Link>
           );
         })}
-        <div className="border-t pt-2.5">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Total Asset</span>
-            <span
-              className="text-muted-foreground"
-              title="Akan tersedia di versi mendatang"
-            >
-              —
-            </span>
-          </div>
-        </div>
+      </div>
+
+      {/* Footer — Total Asset */}
+      <div className="flex items-center justify-between px-4 py-2.5 text-xs">
+        <span className="text-muted-foreground">Total Asset</span>
+        <span
+          className={cn(
+            "font-semibold tabular-nums text-foreground",
+            !visible && mounted && "tracking-widest text-muted-foreground",
+          )}
+        >
+          {assetLabel}
+        </span>
       </div>
     </Card>
   );

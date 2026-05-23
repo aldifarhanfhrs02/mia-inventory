@@ -66,13 +66,22 @@ async function currentStock(tx: Tx, partId: string): Promise<number> {
   return Number(row?.total ?? 0);
 }
 
-/** Filtered, paginated movement list with IN/OUT summary. */
+export interface MovementSummary {
+  countInitial: number;
+  countIn: number;
+  countOut: number;
+  qtyInitial: number;
+  qtyIn: number;
+  qtyOut: number;
+}
+
+/** Filtered, paginated movement list with Initial/IN/OUT summary. */
 export async function getMovements(params: GetMovementsParams): Promise<{
   rows: MovementRow[];
   total: number;
   page: number;
   pageSize: number;
-  summary: { countIn: number; countOut: number; qtyIn: number; qtyOut: number };
+  summary: MovementSummary;
 }> {
   const session = await getServerSession();
   if (!session) redirect("/login");
@@ -123,7 +132,13 @@ export async function getMovements(params: GetMovementsParams): Promise<{
         .includes(q),
     );
   }
-  if (type !== "all") rows = rows.filter((m) => m.type === type);
+  // Type filter — supports INITIAL / IN / OUT individually, plus a special
+  // "in" alias that includes INITIAL (since INITIAL is an incoming stock event).
+  if (type !== "all") {
+    if (type === "IN_ANY")
+      rows = rows.filter((m) => m.type === "IN" || m.type === "INITIAL");
+    else rows = rows.filter((m) => m.type === type);
+  }
   if (partType !== "all") rows = rows.filter((m) => m.partType === partType);
   if (dateFrom) {
     const from = new Date(dateFrom);
@@ -136,15 +151,17 @@ export async function getMovements(params: GetMovementsParams): Promise<{
     rows = rows.filter((m) => new Date(m.createdAt) <= to);
   }
 
-  const summary = {
-    countIn: rows.filter((m) => m.type !== "OUT").length,
-    countOut: rows.filter((m) => m.type === "OUT").length,
-    qtyIn: rows
-      .filter((m) => m.type !== "OUT")
-      .reduce((s, m) => s + m.quantity, 0),
-    qtyOut: rows
-      .filter((m) => m.type === "OUT")
-      .reduce((s, m) => s + m.quantity, 0),
+  const initials = rows.filter((m) => m.type === "INITIAL");
+  const ins = rows.filter((m) => m.type === "IN");
+  const outs = rows.filter((m) => m.type === "OUT");
+  const sum = (arr: MovementRow[]) => arr.reduce((s, m) => s + m.quantity, 0);
+  const summary: MovementSummary = {
+    countInitial: initials.length,
+    countIn: ins.length,
+    countOut: outs.length,
+    qtyInitial: sum(initials),
+    qtyIn: sum(ins),
+    qtyOut: sum(outs),
   };
 
   const total = rows.length;
@@ -156,6 +173,40 @@ export async function getMovements(params: GetMovementsParams): Promise<{
     pageSize: PAGE_SIZE,
     summary,
   };
+}
+
+/**
+ * Every non-deleted movement row — used by the export dialog when the user
+ * picks the "Semua transaksi" scope (ignores active table filters).
+ */
+export async function getAllMovementsForExport(): Promise<MovementRow[]> {
+  const session = await getServerSession();
+  if (!session) return [];
+
+  const raw = await db
+    .select({
+      id: stockMovements.id,
+      type: stockMovements.type,
+      quantity: stockMovements.quantity,
+      stockBefore: stockMovements.stockBefore,
+      stockAfter: stockMovements.stockAfter,
+      requestor: stockMovements.requestor,
+      project: stockMovements.project,
+      createdAt: stockMovements.createdAt,
+      partId: stockMovements.partId,
+      partName: parts.partName,
+      partCode: parts.partCode,
+      maker: parts.maker,
+      partType: parts.type,
+      unit: parts.unit,
+      inputerName: users.fullName,
+    })
+    .from(stockMovements)
+    .innerJoin(parts, eq(parts.id, stockMovements.partId))
+    .leftJoin(users, eq(users.nik, stockMovements.inputerNik))
+    .orderBy(desc(stockMovements.createdAt));
+
+  return raw.map((r) => ({ ...r, inputerName: r.inputerName ?? "—" }));
 }
 
 /** Resolve an active part by barcode (numeric) or part code; with stock. */

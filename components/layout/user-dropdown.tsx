@@ -51,7 +51,7 @@ export function UserDropdown({ user }: UserDropdownProps) {
         <DropdownMenuLabel>
           <div className="font-semibold">{user.fullName}</div>
           <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="font-mono">{user.nik}</span>
+            <span className="tabular-nums">{user.nik}</span>
             <RoleBadge role={user.role} />
           </div>
         </DropdownMenuLabel>

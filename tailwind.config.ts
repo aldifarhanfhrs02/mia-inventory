@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
 
 /**
  * MIA Inventory — Tailwind v3 theme.
@@ -71,8 +72,9 @@ const config: Config = {
       },
 
       fontFamily: {
-        sans: ["var(--font-sans)", "Roboto", "Inter", "system-ui", "sans-serif"],
-        mono: ["var(--font-mono)", "SFMono-Regular", "Consolas", "monospace"],
+        // Single typeface for the entire UI. `font-mono` is no longer used in
+        // components — numeric alignment uses `tabular-nums` instead.
+        sans: ["var(--font-sans)", "Inter", "system-ui", "sans-serif"],
       },
 
       borderRadius: {
@@ -104,7 +106,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindcssAnimate],
 };
 
 export default config;

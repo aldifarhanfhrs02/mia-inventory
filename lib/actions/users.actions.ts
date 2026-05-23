@@ -34,13 +34,16 @@ function generateTempPassword(): string {
   return `Epson@${out}`;
 }
 
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 async function logUser(
+  tx: Tx,
   userId: string,
   action: ActivityAction,
   entityId: string,
   changes: Record<string, unknown>,
 ) {
-  await db.insert(activityLogs).values({
+  await tx.insert(activityLogs).values({
     userId,
     action,
     entityType: "User",
@@ -108,19 +111,21 @@ export async function createUser(
 
   const tempPassword = generateTempPassword();
   try {
-    const [created] = await db
-      .insert(users)
-      .values({
-        nik: v.nik.trim(),
-        fullName: v.fullName.trim(),
-        passwordHash: await hashPassword(tempPassword),
-        role: v.role,
-        status: "active",
-        mustChangePassword: true,
-      })
-      .returning({ id: users.id });
-    await logUser(session.user.id, "CREATE_USER", created.id, {
-      after: { nik: v.nik, fullName: v.fullName, role: v.role },
+    await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(users)
+        .values({
+          nik: v.nik.trim(),
+          fullName: v.fullName.trim(),
+          passwordHash: await hashPassword(tempPassword),
+          role: v.role,
+          status: "active",
+          mustChangePassword: true,
+        })
+        .returning({ id: users.id });
+      await logUser(tx, session.user.id, "CREATE_USER", created.id, {
+        after: { nik: v.nik, fullName: v.fullName, role: v.role },
+      });
     });
     revalidatePath("/users");
     return { ok: true, data: { tempPassword } };
@@ -141,16 +146,18 @@ export async function resetPassword(
   if (!user) return { ok: false, error: "User tidak ditemukan" };
 
   const tempPassword = generateTempPassword();
-  await db
-    .update(users)
-    .set({
-      passwordHash: await hashPassword(tempPassword),
-      mustChangePassword: true,
-      updatedAt: new Date(),
-    })
-    .where(eq(users.id, id));
-  await logUser(session.user.id, "RESET_PASSWORD", id, {
-    before: { nik: user.nik },
+  await db.transaction(async (tx) => {
+    await tx
+      .update(users)
+      .set({
+        passwordHash: await hashPassword(tempPassword),
+        mustChangePassword: true,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id));
+    await logUser(tx, session.user.id, "RESET_PASSWORD", id, {
+      before: { nik: user.nik },
+    });
   });
   revalidatePath("/users");
   return { ok: true, data: { tempPassword } };
@@ -186,16 +193,19 @@ export async function setUserActive(
     }
   }
 
-  await db
-    .update(users)
-    .set({ status: active ? "active" : "inactive", updatedAt: new Date() })
-    .where(eq(users.id, id));
-  await logUser(
-    session.user.id,
-    active ? "REACTIVATE" : "DEACTIVATE_USER",
-    id,
-    { before: { nik: user.nik, status: user.status } },
-  );
+  await db.transaction(async (tx) => {
+    await tx
+      .update(users)
+      .set({ status: active ? "active" : "inactive", updatedAt: new Date() })
+      .where(eq(users.id, id));
+    await logUser(
+      tx,
+      session.user.id,
+      active ? "REACTIVATE" : "DEACTIVATE_USER",
+      id,
+      { before: { nik: user.nik, status: user.status } },
+    );
+  });
   revalidatePath("/users");
   return { ok: true, data: null };
 }
@@ -212,13 +222,15 @@ export async function updateUserRole(
   const [user] = await db.select().from(users).where(eq(users.id, id));
   if (!user) return { ok: false, error: "User tidak ditemukan" };
 
-  await db
-    .update(users)
-    .set({ role, updatedAt: new Date() })
-    .where(eq(users.id, id));
-  await logUser(session.user.id, "CHANGE_ROLE", id, {
-    before: { role: user.role },
-    after: { role },
+  await db.transaction(async (tx) => {
+    await tx
+      .update(users)
+      .set({ role, updatedAt: new Date() })
+      .where(eq(users.id, id));
+    await logUser(tx, session.user.id, "CHANGE_ROLE", id, {
+      before: { role: user.role },
+      after: { role },
+    });
   });
   revalidatePath("/users");
   return { ok: true, data: null };

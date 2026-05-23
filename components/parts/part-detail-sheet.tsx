@@ -1,11 +1,26 @@
 "use client";
 
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  ClipboardList,
+  History,
+  Info,
+  MapPin,
+  Package,
+  ShoppingCart,
+  Tag,
+  TrendingUp,
+  User,
+  Wallet,
+} from "lucide-react";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { TypeBadge } from "@/components/shared/type-badge";
 import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -13,10 +28,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { formatDate, formatDateTime, formatPrice } from "@/lib/utils/format";
 import type {
+  PartClass,
   PartWithStock,
   PurchaseRecord,
   StockMovement,
 } from "@/lib/types";
+
+const PART_CLASS_LABEL: Record<PartClass, string> = {
+  consumable: "Consumable",
+  existing_project: "Existing Project",
+  new_part: "New Part",
+};
 
 export interface PartDetail {
   part: PartWithStock;
@@ -25,6 +47,23 @@ export interface PartDetail {
   updatedByName: string;
 }
 
+/** A section heading with an icon — used inside each card. */
+function SectionTitle({
+  icon: Icon,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <Icon className="h-3.5 w-3.5" />
+      {children}
+    </div>
+  );
+}
+
+/** A label/value row, optionally rendered as a stacked block on small width. */
 function Row({
   label,
   value,
@@ -35,25 +74,31 @@ function Row({
   mono?: boolean;
 }) {
   return (
-    <div className="flex justify-between gap-4 py-1.5 text-sm">
+    <div className="flex items-center justify-between gap-3 py-1.5 text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <span className={cn("text-right", mono && "font-mono text-xs")}>
+      <span
+        className={cn(
+          "text-right font-medium text-foreground",
+          mono && "tabular-nums text-xs",
+        )}
+      >
         {value ?? "—"}
       </span>
     </div>
   );
 }
 
-function Card({
-  title,
+/** Empty-state block for a tab. */
+function EmptyState({
+  icon: Icon,
   children,
 }: {
-  title: string;
+  icon: React.ComponentType<{ className?: string }>;
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border p-3">
-      <p className="mb-1 text-sm font-semibold">{title}</p>
+    <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-12 text-sm text-muted-foreground">
+      <Icon className="h-7 w-7 opacity-40" />
       {children}
     </div>
   );
@@ -70,21 +115,33 @@ export function PartDetailSheet({
   const p = detail?.part;
   const max = p?.maxStock && p.maxStock > 0 ? p.maxStock : null;
   const stockPct = p && max ? Math.min((p.currentStock / max) * 100, 100) : 0;
+  const stockColor =
+    p && p.currentStock === 0
+      ? "text-chart-4"
+      : p && p.currentStock < p.minStock
+        ? "text-chart-3"
+        : "text-chart-2";
   const barColor =
     p && p.currentStock === 0
       ? "bg-chart-4"
       : p && p.currentStock < p.minStock
         ? "bg-chart-3"
         : "bg-chart-2";
+  const totalAsset =
+    p && p.price != null ? p.price * p.currentStock : null;
 
   return (
     <Sheet open={!!detail} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[500px] sm:max-w-[500px]">
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col gap-0 p-0 sm:max-w-[540px]"
+      >
         {p && detail && (
           <>
-            <SheetHeader>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-muted-foreground">
+            {/* HEADER */}
+            <SheetHeader className="space-y-2 border-b bg-muted/30 px-6 pb-5 pt-6 text-left">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded bg-background px-2 py-0.5 tabular-nums text-xs text-muted-foreground">
                   {p.partCode}
                 </span>
                 <StatusBadge
@@ -92,158 +149,312 @@ export function PartDetailSheet({
                     p.status === "inactive" ? "inactive" : p.stockStatus
                   }
                 />
+                <TypeBadge type={p.type} />
               </div>
-              <SheetTitle>{p.partName}</SheetTitle>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                {p.maker} · <TypeBadge type={p.type} />
-              </div>
+              <SheetTitle className="pr-8 text-xl font-semibold leading-snug">
+                {p.partName}
+              </SheetTitle>
+              <SheetDescription className="text-sm">
+                Maker:{" "}
+                <span className="font-medium text-foreground">{p.maker}</span>{" "}
+                · Category:{" "}
+                <span className="font-medium text-foreground">
+                  {p.category}
+                </span>
+              </SheetDescription>
             </SheetHeader>
 
-            <Tabs defaultValue="overview" className="px-4">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="purchase">
-                  Purchase ({detail.purchases.length})
-                </TabsTrigger>
-                <TabsTrigger value="history">
-                  History ({detail.movements.length})
-                </TabsTrigger>
-              </TabsList>
+            {/* SCROLLABLE BODY */}
+            <div className="flex-1 overflow-y-auto">
+              <Tabs defaultValue="overview" className="w-full">
+                <div className="sticky top-0 z-10 border-b bg-background px-6 pt-4">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="overview">Overview</TabsTrigger>
+                    <TabsTrigger value="purchase">
+                      Purchase
+                      <span className="ml-1.5 rounded bg-muted px-1.5 text-[10px] font-medium">
+                        {detail.purchases.length}
+                      </span>
+                    </TabsTrigger>
+                    <TabsTrigger value="history">
+                      History
+                      <span className="ml-1.5 rounded bg-muted px-1.5 text-[10px] font-medium">
+                        {detail.movements.length}
+                      </span>
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
 
-              <TabsContent value="overview" className="space-y-3">
-                <Card title="Identitas Part">
-                  <Row label="Maker" value={p.maker} />
-                  <Row label="Type" value={<TypeBadge type={p.type} />} />
-                  <Row label="Category" value={p.category} />
-                  <Row label="Unit" value={p.unit} />
-                  <Row
-                    label="Price per Unit"
-                    value={formatPrice(p.price)}
-                    mono
-                  />
-                </Card>
-
-                <Card title="Informasi Stok">
-                  <div className="mb-1 flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      Current Stock
-                    </span>
-                    <span className="font-mono text-lg font-bold">
-                      {p.currentStock}
-                    </span>
+                {/* OVERVIEW */}
+                <TabsContent
+                  value="overview"
+                  className="space-y-4 px-6 pb-6 pt-5"
+                >
+                  {/* Stock hero card */}
+                  <div className="rounded-xl border bg-card p-4 shadow-sm">
+                    <SectionTitle icon={TrendingUp}>Stok Saat Ini</SectionTitle>
+                    <div className="flex items-end justify-between">
+                      <div className="flex items-baseline gap-1.5">
+                        <span
+                          className={cn(
+                            "tabular-nums text-4xl font-bold tabular-nums",
+                            stockColor,
+                          )}
+                        >
+                          {p.currentStock}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          {p.unit}
+                        </span>
+                      </div>
+                      <StatusBadge
+                        status={
+                          p.status === "inactive" ? "inactive" : p.stockStatus
+                        }
+                      />
+                    </div>
+                    <div className="mt-3">
+                      <div className="h-2 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            barColor,
+                          )}
+                          style={{ width: `${stockPct}%` }}
+                        />
+                      </div>
+                      <div className="mt-1.5 grid grid-cols-3 gap-2 tabular-nums text-[11px]">
+                        <div className="text-chart-4">
+                          <span className="block text-[10px] uppercase tracking-wide opacity-70">
+                            Min
+                          </span>
+                          {p.minStock}
+                        </div>
+                        <div className="text-center text-chart-1">
+                          <span className="block text-[10px] uppercase tracking-wide opacity-70">
+                            Std
+                          </span>
+                          {p.stdStock ?? "—"}
+                        </div>
+                        <div className="text-right text-chart-2">
+                          <span className="block text-[10px] uppercase tracking-wide opacity-70">
+                            Max
+                          </span>
+                          {p.maxStock ?? "—"}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <span className="block h-1.5 overflow-hidden rounded-full bg-muted">
-                    <span
-                      className={cn("block h-full rounded-full", barColor)}
-                      style={{ width: `${stockPct}%` }}
-                    />
-                  </span>
-                  <div className="mt-1 flex justify-between font-mono text-[10px] text-muted-foreground">
-                    <span>0</span>
-                    <span className="text-chart-4">Min {p.minStock}</span>
-                    <span className="text-chart-1">
-                      Std {p.stdStock ?? "—"}
-                    </span>
-                    <span className="text-chart-2">
-                      Max {p.maxStock ?? "—"}
-                    </span>
+
+                  {/* Asset card — price × stock */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-xl border bg-card p-4">
+                      <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                        <Tag className="h-3.5 w-3.5" />
+                        Price / Unit
+                      </div>
+                      <p className="tabular-nums text-base font-semibold tabular-nums text-foreground">
+                        {formatPrice(p.price)}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+                      <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-primary">
+                        <Wallet className="h-3.5 w-3.5" />
+                        Total Asset
+                      </div>
+                      <p className="tabular-nums text-base font-semibold tabular-nums text-primary">
+                        {formatPrice(totalAsset)}
+                      </p>
+                    </div>
                   </div>
-                </Card>
 
-                <Card title="Lokasi Penyimpanan">
-                  {p.storageType ? (
-                    <>
-                      <Row label="Alamat" value={p.storageAddr} mono />
-                      <Row label="Barcode" value={p.barcode ?? "—"} mono />
-                    </>
-                  ) : (
-                    <p className="py-2 text-sm text-muted-foreground">
-                      Belum ada lokasi — part berstatus unassigned.
-                    </p>
-                  )}
-                </Card>
+                  {/* Identity */}
+                  <div className="rounded-xl border bg-card p-4">
+                    <SectionTitle icon={Info}>Identitas Part</SectionTitle>
+                    <div className="divide-y">
+                      <Row label="Maker" value={p.maker} />
+                      <Row
+                        label="Type"
+                        value={<TypeBadge type={p.type} />}
+                      />
+                      <Row
+                        label="Source"
+                        value={PART_CLASS_LABEL[p.partClass]}
+                      />
+                      <Row label="Category" value={p.category} />
+                      <Row label="Unit" value={p.unit} />
+                    </div>
+                  </div>
 
-                <Card title="Metadata">
-                  <Row label="Updated By" value={detail.updatedByName} />
-                  <Row
-                    label="Updated At"
-                    value={formatDateTime(p.updatedAt)}
-                    mono
-                  />
-                  <Row
-                    label="Part Status"
-                    value={<span className="capitalize">{p.status}</span>}
-                  />
-                </Card>
-              </TabsContent>
+                  {/* Storage */}
+                  <div className="rounded-xl border bg-card p-4">
+                    <SectionTitle icon={MapPin}>
+                      Lokasi Penyimpanan
+                    </SectionTitle>
+                    {p.storageType ? (
+                      <div className="divide-y">
+                        <Row label="Alamat" value={p.storageAddr} mono />
+                        <Row label="Barcode" value={p.barcode ?? "—"} mono />
+                      </div>
+                    ) : (
+                      <p className="rounded-md bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
+                        Belum ada lokasi — part berstatus{" "}
+                        <span className="font-semibold">unassigned</span>.
+                      </p>
+                    )}
+                  </div>
 
-              <TabsContent value="purchase">
-                {detail.purchases.length === 0 ? (
-                  <p className="py-6 text-center text-sm text-muted-foreground">
-                    Belum ada data purchase.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {detail.purchases.map((r) => (
-                      <div
-                        key={r.id}
-                        className="flex items-center justify-between rounded-md border p-2.5 text-sm"
-                      >
-                        <div>
-                          <p className="font-medium">{r.supplier ?? "—"}</p>
-                          <p className="font-mono text-xs text-muted-foreground">
-                            {formatDate(r.requestDate)} · Qty {r.qtyOrdered}
+                  {/* Description / Remarks (only if filled) */}
+                  {(p.description || p.remarks) && (
+                    <div className="rounded-xl border bg-card p-4">
+                      <SectionTitle icon={ClipboardList}>
+                        Catatan
+                      </SectionTitle>
+                      {p.description && (
+                        <div className="mb-2">
+                          <p className="mb-0.5 text-xs text-muted-foreground">
+                            Description
                           </p>
+                          <p className="text-sm">{p.description}</p>
                         </div>
-                        <Badge variant="secondary">{r.status}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="history">
-                {detail.movements.length === 0 ? (
-                  <p className="py-6 text-center text-sm text-muted-foreground">
-                    Belum ada riwayat transaksi.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {detail.movements.map((m) => (
-                      <div
-                        key={m.id}
-                        className="flex items-center justify-between rounded-md border p-2.5 text-sm"
-                      >
+                      )}
+                      {p.remarks && (
                         <div>
-                          <span className="font-mono font-semibold">
-                            {m.type}
-                          </span>{" "}
-                          <span className="text-muted-foreground">
-                            {formatDate(m.createdAt)}
-                          </span>
+                          <p className="mb-0.5 text-xs text-muted-foreground">
+                            Remarks
+                          </p>
+                          <p className="text-sm">{p.remarks}</p>
                         </div>
-                        <div className="text-right font-mono">
-                          <span
-                            className={cn(
-                              "font-semibold",
-                              m.type === "OUT"
-                                ? "text-chart-4"
-                                : "text-chart-2",
-                            )}
-                          >
-                            {m.type === "OUT" ? "-" : "+"}
-                            {m.quantity}
-                          </span>
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            {m.stockBefore}→{m.stockAfter}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                      )}
+                    </div>
+                  )}
+
+                  {/* Metadata */}
+                  <div className="rounded-xl border bg-card p-4">
+                    <SectionTitle icon={User}>Metadata</SectionTitle>
+                    <div className="divide-y">
+                      <Row label="Updated By" value={detail.updatedByName} />
+                      <Row
+                        label="Updated At"
+                        value={formatDateTime(p.updatedAt)}
+                        mono
+                      />
+                      <Row
+                        label="Part Status"
+                        value={
+                          <span className="capitalize">{p.status}</span>
+                        }
+                      />
+                    </div>
                   </div>
-                )}
-              </TabsContent>
-            </Tabs>
+                </TabsContent>
+
+                {/* PURCHASE */}
+                <TabsContent value="purchase" className="px-6 pb-6 pt-5">
+                  {detail.purchases.length === 0 ? (
+                    <EmptyState icon={ShoppingCart}>
+                      Belum ada data purchase untuk part ini.
+                    </EmptyState>
+                  ) : (
+                    <div className="space-y-2">
+                      {detail.purchases.map((r) => (
+                        <div
+                          key={r.id}
+                          className="flex items-center justify-between rounded-lg border bg-card p-3 shadow-sm transition-colors hover:bg-accent/30"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">
+                              {r.supplier ?? "—"}
+                            </p>
+                            <p className="tabular-nums text-xs text-muted-foreground">
+                              {formatDate(r.requestDate)} · Qty {r.qtyOrdered}
+                            </p>
+                          </div>
+                          <Badge variant="secondary" className="capitalize">
+                            {r.status}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* HISTORY */}
+                <TabsContent value="history" className="px-6 pb-6 pt-5">
+                  {detail.movements.length === 0 ? (
+                    <EmptyState icon={History}>
+                      Belum ada riwayat transaksi.
+                    </EmptyState>
+                  ) : (
+                    <div className="space-y-2">
+                      {detail.movements
+                        .slice()
+                        .sort(
+                          (a, b) =>
+                            new Date(b.createdAt).getTime() -
+                            new Date(a.createdAt).getTime(),
+                        )
+                        .map((m) => {
+                          const isOut = m.type === "OUT";
+                          return (
+                            <div
+                              key={m.id}
+                              className="flex items-center gap-3 rounded-lg border bg-card p-3 shadow-sm"
+                            >
+                              <div
+                                className={cn(
+                                  "rounded-md p-1.5",
+                                  isOut
+                                    ? "bg-chart-4/15 text-chart-4"
+                                    : "bg-chart-2/15 text-chart-2",
+                                )}
+                              >
+                                {isOut ? (
+                                  <ArrowDownRight className="h-4 w-4" />
+                                ) : (
+                                  <ArrowUpRight className="h-4 w-4" />
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 text-sm">
+                                  <span className="tabular-nums font-semibold">
+                                    {m.type}
+                                  </span>
+                                  <span className="text-muted-foreground">
+                                    · {formatDate(m.createdAt)}
+                                  </span>
+                                </div>
+                                <p className="truncate tabular-nums text-[11px] text-muted-foreground">
+                                  {m.stockBefore} → {m.stockAfter}
+                                  {m.requestor && ` · ${m.requestor}`}
+                                </p>
+                              </div>
+                              <div
+                                className={cn(
+                                  "tabular-nums text-base font-semibold tabular-nums",
+                                  isOut ? "text-chart-4" : "text-chart-2",
+                                )}
+                              >
+                                {isOut ? "−" : "+"}
+                                {m.quantity}
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </div>
+
+            {/* FOOTER STRIP */}
+            <div className="flex items-center justify-between border-t bg-muted/30 px-6 py-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <Package className="h-3.5 w-3.5" />
+                Part ID
+              </span>
+              <span className="tabular-nums">{p.partCode}</span>
+            </div>
           </>
         )}
       </SheetContent>

@@ -7,8 +7,8 @@ const MAP: Record<
   StatusKey,
   { label: string; variant: React.ComponentProps<typeof Badge>["variant"] }
 > = {
-  available: { label: "Available", variant: "success" },
-  low_stock: { label: "Low Stock", variant: "warning" },
+  available: { label: "Available", variant: "successSolid" },
+  low_stock: { label: "Low Stock", variant: "warningSolid" },
   out_of_stock: { label: "Out of Stock", variant: "destructive" },
   unassigned: { label: "Unassigned", variant: "outlineDashed" },
   inactive: { label: "Inactive", variant: "secondary" },

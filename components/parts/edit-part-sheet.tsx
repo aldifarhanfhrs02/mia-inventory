@@ -24,11 +24,16 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { updatePart } from "@/lib/actions/parts.actions";
 import { UpdatePartSchema } from "@/lib/validations/parts.schema";
-import type { PartType, UpdatePartInput } from "@/lib/types";
+import type { PartClass, PartType, UpdatePartInput } from "@/lib/types";
 import type { PartTableRow } from "@/lib/actions/parts.actions";
 
-const TYPES: PartType[] = ["electrical", "mechanical", "fabrication"];
-const UNITS = ["PCS", "SET", "MTR", "KG", "LBR", "BTG", "ROL", "PAK"];
+const TYPES: PartType[] = ["Electrical", "Mechanical", "Fabrication"];
+const UNITS = ["pcs", "set", "mtr", "kg", "lbr", "btg", "rol", "pak"];
+const PART_CLASSES: { value: PartClass; label: string }[] = [
+  { value: "consumable", label: "Consumable" },
+  { value: "existing_project", label: "Existing Project" },
+  { value: "new_part", label: "New Part" },
+];
 const numOrU = (s: string): number | undefined =>
   s.trim() === "" ? undefined : Number(s);
 
@@ -38,9 +43,10 @@ function formFromPart(part: PartTableRow | null) {
     partName: part?.partName ?? "",
     partCode: part?.partCode ?? "",
     maker: part?.maker ?? "",
-    type: (part?.type ?? "electrical") as PartType,
+    type: (part?.type ?? "Electrical") as PartType,
     category: part?.category ?? "",
-    unit: part?.unit ?? "PCS",
+    partClass: (part?.partClass ?? "consumable") as PartClass,
+    unit: part?.unit ?? "pcs",
     price: part?.price?.toString() ?? "",
     minStock: part ? String(part.minStock) : "",
     stdStock: part?.stdStock?.toString() ?? "",
@@ -64,7 +70,7 @@ export function EditPartSheet({ open, onOpenChange, part }: EditPartSheetProps) 
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
 
-  const set = (key: keyof typeof form, value: string) =>
+  const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
   const submit = async () => {
@@ -75,6 +81,7 @@ export function EditPartSheet({ open, onOpenChange, part }: EditPartSheetProps) 
       maker: form.maker,
       type: form.type,
       category: form.category,
+      partClass: form.partClass,
       unit: form.unit as UpdatePartInput["unit"],
       description: form.description || undefined,
       remarks: form.remarks || undefined,
@@ -103,9 +110,9 @@ export function EditPartSheet({ open, onOpenChange, part }: EditPartSheetProps) 
     <div className="space-y-1.5">
       <Label>{label}</Label>
       <Input
-        value={form[key]}
-        onChange={(e) => set(key, e.target.value)}
-        className={mono ? "font-mono" : undefined}
+        value={form[key] as string}
+        onChange={(e) => set(key, e.target.value as never)}
+        className={mono ? "tabular-nums" : undefined}
       />
     </div>
   );
@@ -136,7 +143,7 @@ export function EditPartSheet({ open, onOpenChange, part }: EditPartSheetProps) 
             <>
               <div className="flex-1 space-y-3 overflow-y-auto px-4 pb-4">
                 <div className="flex items-center gap-2 rounded-md border p-2.5">
-                  <span className="font-mono text-xs text-muted-foreground">
+                  <span className="tabular-nums text-xs text-muted-foreground">
                     {part.partCode}
                   </span>
                   <StatusBadge
@@ -155,7 +162,7 @@ export function EditPartSheet({ open, onOpenChange, part }: EditPartSheetProps) 
                     <Label>Type</Label>
                     <Select
                       value={form.type}
-                      onValueChange={(v) => set("type", v)}
+                      onValueChange={(v) => set("type", v as PartType)}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -175,25 +182,45 @@ export function EditPartSheet({ open, onOpenChange, part }: EditPartSheetProps) 
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  {field("Category", "category")}
                   <div className="space-y-1.5">
-                    <Label>Unit</Label>
+                    <Label>Source</Label>
                     <Select
-                      value={form.unit}
-                      onValueChange={(v) => set("unit", v)}
+                      value={form.partClass}
+                      onValueChange={(v) =>
+                        set("partClass", v as PartClass)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {UNITS.map((u) => (
-                          <SelectItem key={u} value={u}>
-                            {u}
+                        {PART_CLASSES.map((c) => (
+                          <SelectItem key={c.value} value={c.value}>
+                            {c.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
+                  {field("Category", "category")}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Unit</Label>
+                  <Select
+                    value={form.unit}
+                    onValueChange={(v) => set("unit", v as typeof form.unit)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {UNITS.map((u) => (
+                        <SelectItem key={u} value={u}>
+                          {u}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Price per Unit</Label>
@@ -206,7 +233,7 @@ export function EditPartSheet({ open, onOpenChange, part }: EditPartSheetProps) 
                       min="0"
                       value={form.price}
                       onChange={(e) => set("price", e.target.value)}
-                      className="pl-9 font-mono"
+                      className="pl-9 tabular-nums"
                     />
                   </div>
                 </div>

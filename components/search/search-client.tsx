@@ -189,7 +189,7 @@ export function SearchClient() {
           : "hover:bg-accent",
       )}
     >
-      {label} <span className="font-mono font-semibold">{n}</span>
+      {label} <span className="tabular-nums font-semibold">{n}</span>
     </button>
   );
 
@@ -252,12 +252,12 @@ export function SearchClient() {
                         <ChevronRight className="h-4 w-4" />
                       )}
                     </TableCell>
-                    <TableCell className="font-mono text-xs">
+                    <TableCell className="tabular-nums text-xs">
                       {r.partCode || "—"}
                     </TableCell>
                     <TableCell>{r.partName || "—"}</TableCell>
                     <TableCell>{r.maker || "—"}</TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right tabular-nums">
                       {r.qtyNeeded}
                     </TableCell>
                     <TableCell>
@@ -266,7 +266,7 @@ export function SearchClient() {
                       </Badge>
                     </TableCell>
                     <TableCell>{r.matchedPart?.partName ?? "—"}</TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right tabular-nums">
                       {r.matchedPart?.currentStock ?? "—"}
                     </TableCell>
                   </TableRow>
@@ -283,11 +283,11 @@ export function SearchClient() {
                               >
                                 <span>
                                   {c.partName}{" "}
-                                  <span className="font-mono text-xs text-muted-foreground">
+                                  <span className="tabular-nums text-xs text-muted-foreground">
                                     {c.partCode}
                                   </span>
                                 </span>
-                                <span className="font-mono">
+                                <span className="tabular-nums">
                                   Stok {c.currentStock} {c.unit}
                                 </span>
                               </div>
@@ -295,7 +295,7 @@ export function SearchClient() {
                           </div>
                         )}
                         {r.matchedPart && (
-                          <div className="rounded-md border bg-background p-2 font-mono text-xs">
+                          <div className="rounded-md border bg-background p-2 tabular-nums text-xs">
                             {r.matchedPart.partCode} · {r.matchedPart.storageAddr}{" "}
                             · Stok {r.matchedPart.currentStock}{" "}
                             {r.matchedPart.unit}

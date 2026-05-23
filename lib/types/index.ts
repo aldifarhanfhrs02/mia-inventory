@@ -6,7 +6,7 @@
 // ENUMS
 // ============================================================================
 
-export type PartType = "electrical" | "mechanical" | "fabrication";
+export type PartType = "Electrical" | "Mechanical" | "Fabrication";
 export type PartStatus = "active" | "inactive" | "unassigned";
 export type StockStatus =
   | "available"
@@ -39,21 +39,26 @@ export type ActivityAction =
   | "RESET_PASSWORD"
   | "CHANGE_ROLE"
   | "CREATE_PURCHASE"
-  | "UPDATE_PURCHASE";
+  | "UPDATE_PURCHASE"
+  | "CHANGE_PASSWORD";
 
 export type EntityType = "Part" | "User" | "Movement" | "Purchase" | "Project";
 
-export type StorageType = "A" | "B" | "C" | "D" | "E";
+/** Storage cabinet kind. A = Lemari, B = Rak. */
+export type StorageType = "A" | "B";
+
+/** Procurement / usage classification — drives the "Category" column. */
+export type PartClass = "consumable" | "existing_project" | "new_part";
 
 export type UnitType =
-  | "PCS"
-  | "SET"
-  | "MTR"
-  | "KG"
-  | "LBR"
-  | "BTG"
-  | "ROL"
-  | "PAK";
+  | "pcs"
+  | "set"
+  | "mtr"
+  | "kg"
+  | "lbr"
+  | "btg"
+  | "rol"
+  | "pak";
 
 // ============================================================================
 // CORE ENTITIES (match Drizzle schema in lib/db/schema/)
@@ -66,6 +71,8 @@ export interface Part {
   maker: string;
   type: PartType;
   category: string;
+  /** Procurement / usage class — Consumable / Existing Project / New Part. */
+  partClass: PartClass;
   unit: UnitType;
   description?: string | null;
   remarks?: string | null;
@@ -231,6 +238,22 @@ export interface ActivityFeedItem {
   date: string;
 }
 
+/** One bucket on the Stock Movement column chart — IN/OUT for a period. */
+export interface MovementTrendPoint {
+  /** Display label on the X-axis ("06 Sep", "W36", "Sep 2025"). */
+  label: string;
+  /** Sort key — ISO date string of the bucket start. */
+  iso: string;
+  in: { qty: number; count: number };
+  out: { qty: number; count: number };
+}
+
+export interface MovementTrend {
+  daily: MovementTrendPoint[];
+  weekly: MovementTrendPoint[];
+  monthly: MovementTrendPoint[];
+}
+
 export interface DashboardData {
   kpi: DashboardKpi;
   stockHealth: StockHealthItem[];
@@ -238,6 +261,7 @@ export interface DashboardData {
   perType: Record<PartType, TypeBreakdown>;
   alertStock: AlertStockItem[];
   recentActivity: ActivityFeedItem[];
+  movementTrend: MovementTrend;
 }
 
 // ============================================================================
@@ -310,6 +334,7 @@ export interface CreatePartInput {
   maker: string;
   type: PartType;
   category: string;
+  partClass: PartClass;
   unit: UnitType;
   description?: string;
   remarks?: string;

@@ -24,8 +24,14 @@ const badgeVariants = cva(
           "border-transparent bg-chart-1/15 text-chart-1",
         purple:
           "border-transparent bg-chart-5/15 text-chart-5",
+        // Solid variants — used by the stock-status pill so Available / Low /
+        // Out of Stock all read with the same visual weight.
+        successSolid:
+          "border-transparent bg-chart-2 text-white shadow-sm",
+        warningSolid:
+          "border-transparent bg-chart-3 text-zinc-900 shadow-sm dark:text-zinc-950",
         outlineDashed:
-          "border-dashed border-chart-3 bg-chart-3/10 text-chart-3",
+          "border-dashed border-slate-400 bg-slate-100 text-slate-600 dark:border-slate-500 dark:bg-slate-800/40 dark:text-slate-300",
       },
     },
     defaultVariants: {

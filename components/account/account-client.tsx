@@ -26,7 +26,7 @@ export function AccountClient(props: AccountClientProps) {
   }
 
   const rows: [string, React.ReactNode][] = [
-    ["NIK", <span key="n" className="font-mono">{props.nik}</span>],
+    ["NIK", <span key="n" className="tabular-nums">{props.nik}</span>],
     ["Nama Lengkap", props.fullName],
     ["Role", <RoleBadge key="r" role={props.role} />],
     [
@@ -37,13 +37,13 @@ export function AccountClient(props: AccountClientProps) {
     ],
     [
       "Login Terakhir",
-      <span key="l" className="font-mono text-xs">
+      <span key="l" className="tabular-nums text-xs">
         {formatDateTime(props.lastLoginAt)}
       </span>,
     ],
     [
       "Terdaftar Sejak",
-      <span key="c" className="font-mono text-xs">
+      <span key="c" className="tabular-nums text-xs">
         {formatDate(props.createdAt)}
       </span>,
     ],

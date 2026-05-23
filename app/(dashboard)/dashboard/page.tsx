@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { AlertStockWidget } from "@/components/dashboard/alert-stock-widget";
 import { KpiGrid } from "@/components/dashboard/kpi-grid";
 import { StockHealthChart } from "@/components/dashboard/stock-health-chart";
+import { StockMovementChart } from "@/components/dashboard/stock-movement-chart";
 import { TransactionLogFeed } from "@/components/dashboard/transaction-log-feed";
 import { TypeBreakdownCard } from "@/components/dashboard/type-breakdown-card";
 import { TypeDistributionChart } from "@/components/dashboard/type-distribution-chart";
@@ -26,15 +27,16 @@ export default async function DashboardPage() {
       <div className="space-y-6">
         <KpiGrid kpi={data.kpi} />
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <StockMovementChart trend={data.movementTrend} />
           <StockHealthChart data={data.stockHealth} />
           <TypeDistributionChart perType={data.perType} />
         </div>
 
         <div className="grid gap-4 lg:grid-cols-3">
-          <TypeBreakdownCard data={data.perType.electrical} />
-          <TypeBreakdownCard data={data.perType.mechanical} />
-          <TypeBreakdownCard data={data.perType.fabrication} />
+          <TypeBreakdownCard data={data.perType.Electrical} />
+          <TypeBreakdownCard data={data.perType.Mechanical} />
+          <TypeBreakdownCard data={data.perType.Fabrication} />
         </div>
 
         <div className="grid gap-4 lg:grid-cols-12">

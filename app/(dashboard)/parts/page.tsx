@@ -28,6 +28,8 @@ export default async function MasterPartPage({
       status: list("status"),
       maker: list("maker"),
       category: list("category"),
+      updatedFrom: get("updatedFrom"),
+      updatedTo: get("updatedTo"),
       page: Number(get("page") ?? "1") || 1,
       sort: get("sort"),
       dir: get("dir") === "desc" ? "desc" : "asc",

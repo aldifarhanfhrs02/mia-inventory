@@ -12,9 +12,28 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { formatDate, formatPrice } from "@/lib/utils/format";
 import type { PartTableRow } from "@/lib/actions/parts.actions";
+import type { PartClass } from "@/lib/types";
 import { RowActions } from "./row-actions";
+
+const PART_CLASS_LABEL: Record<PartClass, string> = {
+  consumable: "Consumable",
+  existing_project: "Existing Project",
+  new_part: "New Part",
+};
+
+/**
+ * Source pill colors — orange / rose / outline. Picked to be visually distinct
+ * from Type (blue / purple / teal) and Status (green / yellow / red / slate / gray).
+ */
+const PART_CLASS_CLASS: Record<PartClass, string> = {
+  consumable:
+    "border border-zinc-300 bg-transparent text-zinc-700 dark:border-zinc-600 dark:text-zinc-300",
+  existing_project:
+    "border-transparent bg-orange-500/15 text-orange-600 dark:text-orange-400",
+  new_part:
+    "border-transparent bg-rose-500/15 text-rose-600 dark:text-rose-400",
+};
 
 interface PartsTableProps {
   data: PartTableRow[];
@@ -38,13 +57,12 @@ const COLS: { key: string; label: string; sortable: boolean; align?: "right" }[]
     { key: "maker", label: "Maker", sortable: true },
     { key: "type", label: "Type", sortable: true },
     { key: "category", label: "Category", sortable: true },
+    { key: "partClass", label: "Source", sortable: true },
     { key: "storageAddr", label: "Storage", sortable: true },
-    { key: "price", label: "Price", sortable: true, align: "right" },
     { key: "currentStock", label: "Stock", sortable: true, align: "right" },
     { key: "unit", label: "Unit", sortable: false },
     { key: "stockStatus", label: "Status", sortable: true },
     { key: "updatedByName", label: "Updated By", sortable: false },
-    { key: "updatedAt", label: "Updated", sortable: true },
     { key: "_actions", label: "", sortable: false },
   ];
 
@@ -132,7 +150,7 @@ export function PartsTable({
                 className={cn(
                   "whitespace-nowrap",
                   p.status === "unassigned" &&
-                    "border-l-2 border-dashed border-l-chart-3 bg-chart-3/5",
+                    "border-l-2 border-dashed border-l-slate-400 bg-slate-50 dark:border-l-slate-500 dark:bg-slate-800/20",
                   p.status === "inactive" && "opacity-55",
                 )}
               >
@@ -148,29 +166,38 @@ export function PartsTable({
                     {p.partName}
                   </button>
                 </TableCell>
-                <TableCell className="font-mono text-xs">{p.partCode}</TableCell>
+                <TableCell className="tabular-nums text-xs">{p.partCode}</TableCell>
                 <TableCell>{p.maker}</TableCell>
                 <TableCell>
                   <TypeBadge type={p.type} />
                 </TableCell>
-                <TableCell>{p.category}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {p.category}
+                </TableCell>
+                <TableCell>
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold",
+                      PART_CLASS_CLASS[p.partClass],
+                    )}
+                  >
+                    {PART_CLASS_LABEL[p.partClass]}
+                  </span>
+                </TableCell>
                 <TableCell>
                   {p.storageAddr === "—" ? (
-                    <span className="font-mono text-xs text-muted-foreground">
+                    <span className="tabular-nums text-xs text-muted-foreground">
                       —
                     </span>
                   ) : (
                     <button
                       type="button"
                       onClick={() => onStorageHistory(p.storageAddr)}
-                      className="font-mono text-xs text-primary hover:underline"
+                      className="tabular-nums text-xs text-primary hover:underline"
                     >
                       {p.storageAddr}
                     </button>
                   )}
-                </TableCell>
-                <TableCell className="text-right font-mono text-xs">
-                  {formatPrice(p.price)}
                 </TableCell>
                 <TableCell className="text-right">
                   <button
@@ -178,7 +205,7 @@ export function PartsTable({
                     onClick={() => onStockClick(p)}
                     title="Lihat Min / Std / Max"
                     className={cn(
-                      "font-mono font-semibold hover:underline",
+                      "tabular-nums font-semibold hover:underline",
                       stockColor,
                     )}
                   >
@@ -207,9 +234,6 @@ export function PartsTable({
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {p.updatedByName.split(" ")[0]}
-                </TableCell>
-                <TableCell className="font-mono text-xs text-muted-foreground">
-                  {formatDate(p.updatedAt)}
                 </TableCell>
                 <TableCell>
                   <RowActions

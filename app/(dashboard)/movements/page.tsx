@@ -5,37 +5,6 @@ import { getServerSession, isAdmin } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
-function SummaryStrip({
-  total,
-  summary,
-}: {
-  total: number;
-  summary: { countIn: number; countOut: number; qtyIn: number; qtyOut: number };
-}) {
-  return (
-    <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border bg-card p-3 text-sm">
-      <span>
-        <span className="text-muted-foreground">Total Transaksi </span>
-        <span className="font-mono font-semibold">{total}</span>
-      </span>
-      <span className="flex items-center gap-1.5">
-        <span className="h-2 w-2 rounded-full bg-chart-2" />
-        <span className="text-muted-foreground">IN</span>
-        <span className="font-mono font-semibold text-chart-2">
-          {summary.countIn} (+{summary.qtyIn})
-        </span>
-      </span>
-      <span className="flex items-center gap-1.5">
-        <span className="h-2 w-2 rounded-full bg-chart-4" />
-        <span className="text-muted-foreground">OUT</span>
-        <span className="font-mono font-semibold text-chart-4">
-          {summary.countOut} (-{summary.qtyOut})
-        </span>
-      </span>
-    </div>
-  );
-}
-
 export default async function StockMovementPage({
   searchParams,
 }: {
@@ -68,9 +37,9 @@ export default async function StockMovementPage({
     <>
       <PageHeader
         title="Stock Movement"
-        subtitle={`${data.total} transaksi`}
+        subtitle="Riwayat pergerakan stok dari System, Stock IN manual, dan Stock OUT."
       />
-      <SummaryStrip total={data.total} summary={data.summary} />
+
       <MovementsClient
         rows={data.rows}
         total={data.total}
@@ -79,6 +48,7 @@ export default async function StockMovementPage({
         isAdmin={isAdmin(session)}
         projectOptions={projectOptions}
         inputerLabel={inputerLabel}
+        summary={data.summary}
       />
     </>
   );

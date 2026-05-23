@@ -6,15 +6,15 @@ import { Pagination } from "@/components/shared/pagination";
 import { getPartDetail } from "@/lib/actions/parts.actions";
 import { getStorageHistory } from "@/lib/actions/purchase.actions";
 import type { PartTableRow } from "@/lib/actions/parts.actions";
-import { AssignLocationSheet } from "./assign-location-sheet";
+import { AssignLocationDialog } from "./assign-location-dialog";
 import { EditPartSheet } from "./edit-part-sheet";
 import { ExportDialog } from "./export-dialog";
 import { ImportDialog } from "./import-dialog";
 import { PartDetailSheet, type PartDetail } from "./part-detail-sheet";
-import { PartFormSheet } from "./part-form-sheet";
+import { PartFormDialog } from "./part-form-dialog";
 import { PartsTable } from "./parts-table";
 import { PartsToolbar } from "./parts-toolbar";
-import { PurchasePartSheet } from "./purchase-part-sheet";
+import { PurchasePartDialog } from "./purchase-part-dialog";
 import { StockDetailDialog } from "./stock-detail-dialog";
 import {
   StorageHistoryDialog,
@@ -100,7 +100,7 @@ export function PartsClient({
         detail={detail}
         onOpenChange={(open) => !open && setDetail(null)}
       />
-      <PartFormSheet
+      <PartFormDialog
         open={addOpen}
         onOpenChange={setAddOpen}
         usedBarcodes={usedBarcodes}
@@ -112,7 +112,7 @@ export function PartsClient({
         onOpenChange={(open) => !open && setEditPart(null)}
         part={editPart}
       />
-      <AssignLocationSheet
+      <AssignLocationDialog
         key={`assign-${assignPart?.id ?? "none"}`}
         open={!!assignPart}
         onOpenChange={(open) => !open && setAssignPart(null)}
@@ -120,7 +120,7 @@ export function PartsClient({
         usedBarcodes={usedBarcodes}
         usedAddresses={usedAddresses}
       />
-      <PurchasePartSheet
+      <PurchasePartDialog
         key={`purchase-${purchasePart?.id ?? "none"}`}
         open={!!purchasePart}
         onOpenChange={(open) => !open && setPurchasePart(null)}
@@ -136,6 +136,7 @@ export function PartsClient({
       />
       <ImportDialog open={importOpen} onOpenChange={setImportOpen} />
       <ExportDialog
+        key={`export-${exportOpen ? "open" : "closed"}`}
         open={exportOpen}
         onOpenChange={setExportOpen}
         rows={rows}

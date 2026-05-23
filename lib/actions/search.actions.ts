@@ -39,6 +39,8 @@ async function loadActiveParts(): Promise<PartWithStock[]> {
       maker: String(r.maker),
       type: r.type as PartWithStock["type"],
       category: String(r.category),
+      partClass:
+        (r.part_class as PartWithStock["partClass"]) ?? "consumable",
       unit: r.unit as PartWithStock["unit"],
       description: (r.description as string | null) ?? null,
       remarks: (r.remarks as string | null) ?? null,

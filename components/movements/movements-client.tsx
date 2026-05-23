@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 import { Pagination } from "@/components/shared/pagination";
-import type { MovementRow } from "@/lib/actions/movements.actions";
+import type {
+  MovementRow,
+  MovementSummary,
+} from "@/lib/actions/movements.actions";
 import { ExportDialog } from "./export-dialog";
 import { MovementsTable } from "./movements-table";
 import { MovementsToolbar } from "./movements-toolbar";
-import { StockSheet } from "./stock-sheet";
+import { StockDialog } from "./stock-dialog";
 
 interface MovementsClientProps {
   rows: MovementRow[];
@@ -16,6 +19,7 @@ interface MovementsClientProps {
   isAdmin: boolean;
   projectOptions: string[];
   inputerLabel: string;
+  summary: MovementSummary;
 }
 
 /** Orchestrates the Stock Movement toolbar, table, sheet, and export dialog. */
@@ -27,6 +31,7 @@ export function MovementsClient({
   isAdmin,
   projectOptions,
   inputerLabel,
+  summary,
 }: MovementsClientProps) {
   const [sheetMode, setSheetMode] = useState<"IN" | "OUT" | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
@@ -38,21 +43,28 @@ export function MovementsClient({
         onStockIn={() => setSheetMode("IN")}
         onStockOut={() => setSheetMode("OUT")}
         onExport={() => setExportOpen(true)}
+        total={total}
+        summary={summary}
       />
 
       <MovementsTable rows={rows} startIndex={(page - 1) * pageSize} />
 
       <Pagination page={page} pageSize={pageSize} total={total} />
 
-      {/* key remounts the sheet so its form state resets on each open. */}
-      <StockSheet
+      {/* key remounts the dialog so its form state resets on each open. */}
+      <StockDialog
         key={sheetMode ?? "closed"}
         mode={sheetMode}
         onOpenChange={(open) => !open && setSheetMode(null)}
         projectOptions={projectOptions}
         inputerLabel={inputerLabel}
       />
-      <ExportDialog open={exportOpen} onOpenChange={setExportOpen} rows={rows} />
+      <ExportDialog
+        key={`export-${exportOpen ? "open" : "closed"}`}
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        rows={rows}
+      />
     </>
   );
 }

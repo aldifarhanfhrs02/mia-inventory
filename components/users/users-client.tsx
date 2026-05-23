@@ -121,7 +121,7 @@ export function UsersClient({ rows, summary }: UsersClientProps) {
   const stat = (label: string, value: number) => (
     <span>
       <span className="text-muted-foreground">{label} </span>
-      <span className="font-mono font-semibold">{value}</span>
+      <span className="tabular-nums font-semibold">{value}</span>
     </span>
   );
 
@@ -183,7 +183,7 @@ export function UsersClient({ rows, summary }: UsersClientProps) {
                 <TableCell className="text-muted-foreground">
                   {i + 1}
                 </TableCell>
-                <TableCell className="font-mono text-xs">{u.nik}</TableCell>
+                <TableCell className="tabular-nums text-xs">{u.nik}</TableCell>
                 <TableCell className="font-medium">{u.fullName}</TableCell>
                 <TableCell>
                   <RoleBadge role={u.role} />
@@ -195,10 +195,10 @@ export function UsersClient({ rows, summary }: UsersClientProps) {
                     {u.status === "active" ? "Active" : "Inactive"}
                   </Badge>
                 </TableCell>
-                <TableCell className="font-mono text-xs">
+                <TableCell className="tabular-nums text-xs">
                   {formatDateTime(u.lastLoginAt)}
                 </TableCell>
-                <TableCell className="font-mono text-xs">
+                <TableCell className="tabular-nums text-xs">
                   {formatDate(u.createdAt)}
                 </TableCell>
                 <TableCell>
@@ -255,7 +255,7 @@ export function UsersClient({ rows, summary }: UsersClientProps) {
               <Input
                 value={nik}
                 onChange={(e) => setNik(e.target.value)}
-                className="font-mono"
+                className="tabular-nums"
               />
             </div>
             <div className="space-y-1.5">
@@ -315,7 +315,7 @@ export function UsersClient({ rows, summary }: UsersClientProps) {
               pengguna.
             </DialogDescription>
           </DialogHeader>
-          <p className="rounded-md border bg-muted/40 py-3 text-center font-mono text-lg font-semibold">
+          <p className="rounded-md border bg-muted/40 py-3 text-center tabular-nums text-lg font-semibold">
             {tempResult?.password}
           </p>
           <DialogFooter>

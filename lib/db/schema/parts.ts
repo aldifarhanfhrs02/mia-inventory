@@ -8,7 +8,13 @@ import {
   uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
-import type { PartStatus, PartType, StorageType, UnitType } from "@/lib/types";
+import type {
+  PartClass,
+  PartStatus,
+  PartType,
+  StorageType,
+  UnitType,
+} from "@/lib/types";
 import { users } from "./users";
 
 /**
@@ -26,6 +32,10 @@ export const parts = pgTable(
     maker: varchar("maker", { length: 100 }).notNull(),
     type: varchar("type", { length: 20 }).$type<PartType>().notNull(),
     category: varchar("category", { length: 50 }).notNull(),
+    partClass: varchar("part_class", { length: 30 })
+      .$type<PartClass>()
+      .notNull()
+      .default("consumable"),
     unit: varchar("unit", { length: 20 }).$type<UnitType>().notNull(),
     description: text("description"),
     remarks: text("remarks"),

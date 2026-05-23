@@ -84,7 +84,7 @@ export function StorageHistoryDialog({
         {data && (
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-base font-bold tracking-wide text-primary">
+              <span className="tabular-nums text-base font-bold tracking-wide text-primary">
                 {data.addr}
               </span>
               <Badge variant={data.current ? "success" : "secondary"}>
@@ -98,7 +98,7 @@ export function StorageHistoryDialog({
                   Saat ini digunakan oleh
                 </p>
                 <p className="text-sm font-medium">{data.current.partName}</p>
-                <p className="font-mono text-xs text-muted-foreground">
+                <p className="tabular-nums text-xs text-muted-foreground">
                   {data.current.partCode}
                 </p>
               </div>
@@ -119,7 +119,7 @@ export function StorageHistoryDialog({
                 >
                   *{data.current.barcode}*
                 </p>
-                <p className="mt-1 font-mono text-base tracking-[0.4em] text-zinc-900">
+                <p className="mt-1 tabular-nums text-base tracking-[0.4em] text-zinc-900">
                   {data.current.barcode}
                 </p>
                 <Button
@@ -163,7 +163,7 @@ export function StorageHistoryDialog({
                     <TableBody>
                       {data.history.map((h) => (
                         <TableRow key={h.partCode}>
-                          <TableCell className="font-mono text-xs">
+                          <TableCell className="tabular-nums text-xs">
                             {h.partCode}
                           </TableCell>
                           <TableCell>{h.partName}</TableCell>

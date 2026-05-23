@@ -8,6 +8,8 @@ import type {
   ActivityFeedItem,
   AlertStockItem,
   DashboardData,
+  MovementTrend,
+  MovementTrendPoint,
   PartType,
   StockStatus,
   TypeBreakdown,
@@ -27,6 +29,7 @@ interface PartStockRow {
   partName: string;
   partCode: string;
   minStock: number;
+  price: number | null;
   currentStock: number;
 }
 
@@ -66,6 +69,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       p.part_name  AS "partName",
       p.part_code  AS "partCode",
       p.min_stock  AS "minStock",
+      p.price      AS "price",
       COALESCE(SUM(CASE WHEN sm.type IN ('INITIAL','IN') THEN sm.quantity ELSE 0 END), 0)
         - COALESCE(SUM(CASE WHEN sm.type = 'OUT' THEN sm.quantity ELSE 0 END), 0)
         AS "currentStock"
@@ -79,6 +83,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   const parts = (partRowsRaw.rows as unknown as PartStockRow[]).map((r) => ({
     ...r,
     minStock: Number(r.minStock),
+    price: r.price == null ? null : Number(r.price),
     currentStock: Number(r.currentStock),
   }));
 
@@ -89,10 +94,11 @@ export async function getDashboardData(): Promise<DashboardData> {
   let lowStock = 0;
   let outOfStock = 0;
   let unassigned = 0;
+  let totalAsset = 0;
   const perType: Record<PartType, TypeBreakdown> = {
-    electrical: emptyBreakdown("electrical"),
-    mechanical: emptyBreakdown("mechanical"),
-    fabrication: emptyBreakdown("fabrication"),
+    Electrical: { ...emptyBreakdown("Electrical"), totalAsset: 0 },
+    Mechanical: { ...emptyBreakdown("Mechanical"), totalAsset: 0 },
+    Fabrication: { ...emptyBreakdown("Fabrication"), totalAsset: 0 },
   };
 
   for (const p of visible) {
@@ -112,6 +118,12 @@ export async function getDashboardData(): Promise<DashboardData> {
       unassigned++;
       bucket.unassigned++;
     }
+    // Asset value = price × currentStock (skip rows with no price).
+    if (p.price != null && p.currentStock > 0) {
+      const asset = p.price * p.currentStock;
+      totalAsset += asset;
+      bucket.totalAsset = (bucket.totalAsset ?? 0) + asset;
+    }
   }
 
   const stockHealth = [
@@ -122,18 +134,18 @@ export async function getDashboardData(): Promise<DashboardData> {
   ];
 
   const TYPE_LABEL: Record<PartType, string> = {
-    electrical: "Electrical",
-    mechanical: "Mechanical",
-    fabrication: "Fabrication",
+    Electrical: "Electrical",
+    Mechanical: "Mechanical",
+    Fabrication: "Fabrication",
   };
   const TYPE_COLOR: Record<PartType, string> = {
-    electrical: "hsl(var(--chart-1))",
-    mechanical: "hsl(var(--chart-5))",
-    fabrication: "hsl(var(--chart-2))",
+    Electrical: "hsl(var(--chart-1))",
+    Mechanical: "hsl(var(--chart-5))",
+    Fabrication: "hsl(var(--chart-2))",
   };
 
   const typeDistribution = (
-    ["electrical", "mechanical", "fabrication"] as PartType[]
+    ["Electrical", "Mechanical", "Fabrication"] as PartType[]
   ).map((type) => {
     const b = perType[type];
     const seg = (n: number) => (b.total > 0 ? Math.round((n / b.total) * 100) : 0);
@@ -214,6 +226,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     };
   });
 
+  const movementTrend = await loadMovementTrend();
+
   return {
     kpi: {
       totalParts: visible.length,
@@ -221,12 +235,127 @@ export async function getDashboardData(): Promise<DashboardData> {
       lowStock,
       outOfStock,
       unassigned,
-      totalAsset: null,
+      totalAsset,
     },
     stockHealth,
     typeDistribution,
     perType,
     alertStock,
     recentActivity,
+    movementTrend,
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Movement-trend aggregation (Stock IN / Stock OUT over time)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface MovementBucketRow {
+  bucket: string;
+  type: "IN" | "OUT";
+  qty: string | number;
+  count: string | number;
+}
+
+const MONTH_LABEL = [
+  "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+  "Jul", "Agu", "Sep", "Okt", "Nov", "Des",
+];
+
+/** ISO week number (1-53). */
+function isoWeek(d: Date): number {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  return Math.ceil(
+    ((t.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
+  );
+}
+
+/** Build an array of empty buckets stepping back from "today". */
+function emptyBuckets(
+  unit: "day" | "week" | "month",
+  count: number,
+): MovementTrendPoint[] {
+  const now = new Date();
+  const points: MovementTrendPoint[] = [];
+  for (let i = count - 1; i >= 0; i--) {
+    const d = new Date(now);
+    if (unit === "day") {
+      d.setDate(now.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      points.push({
+        iso: d.toISOString().slice(0, 10),
+        label: `${String(d.getDate()).padStart(2, "0")} ${MONTH_LABEL[d.getMonth()]}`,
+        in: { qty: 0, count: 0 },
+        out: { qty: 0, count: 0 },
+      });
+    } else if (unit === "week") {
+      d.setDate(now.getDate() - i * 7);
+      // Snap to Monday of that week (UTC ISO week start).
+      const day = d.getDay() || 7;
+      d.setDate(d.getDate() - day + 1);
+      d.setHours(0, 0, 0, 0);
+      points.push({
+        iso: d.toISOString().slice(0, 10),
+        label: `W${isoWeek(d)}`,
+        in: { qty: 0, count: 0 },
+        out: { qty: 0, count: 0 },
+      });
+    } else {
+      d.setMonth(now.getMonth() - i, 1);
+      d.setHours(0, 0, 0, 0);
+      points.push({
+        iso: d.toISOString().slice(0, 10),
+        label: `${MONTH_LABEL[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`,
+        in: { qty: 0, count: 0 },
+        out: { qty: 0, count: 0 },
+      });
+    }
+  }
+  return points;
+}
+
+/** Run the SQL for one granularity and fold the rows into pre-built buckets. */
+async function bucketize(
+  unit: "day" | "week" | "month",
+  count: number,
+): Promise<MovementTrendPoint[]> {
+  const buckets = emptyBuckets(unit, count);
+  const earliest = buckets[0].iso;
+
+  const raw = await db.execute(sql`
+    SELECT
+      to_char(date_trunc(${unit}, created_at), 'YYYY-MM-DD') AS bucket,
+      type,
+      SUM(quantity)::int AS qty,
+      COUNT(*)::int AS count
+    FROM stock_movements
+    WHERE type IN ('IN','OUT')
+      AND created_at >= ${earliest}::date
+    GROUP BY 1, 2
+  `);
+
+  // Index buckets by iso key for O(1) lookup.
+  const byIso = new Map(buckets.map((b) => [b.iso, b]));
+  for (const r of raw.rows as unknown as MovementBucketRow[]) {
+    const target = byIso.get(r.bucket);
+    if (!target) continue;
+    const qty = Number(r.qty);
+    const cnt = Number(r.count);
+    if (r.type === "IN") target.in = { qty, count: cnt };
+    else target.out = { qty, count: cnt };
+  }
+  return buckets;
+}
+
+/** Build the 3 granularities for the Stock Movement chart. */
+async function loadMovementTrend(): Promise<MovementTrend> {
+  const [daily, weekly, monthly] = await Promise.all([
+    bucketize("day", 7),
+    bucketize("week", 8),
+    bucketize("month", 6),
+  ]);
+  return { daily, weekly, monthly };
 }

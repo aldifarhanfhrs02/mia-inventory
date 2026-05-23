@@ -83,9 +83,9 @@ export function AlertStockWidget({ items }: { items: AlertStockItem[] }) {
                     </span>
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    <span className="font-mono">{item.partCode}</span>
+                    <span className="tabular-nums">{item.partCode}</span>
                     {" · Stok "}
-                    <span className="font-mono font-medium text-foreground">
+                    <span className="tabular-nums font-medium text-foreground">
                       {item.currentStock}
                     </span>
                     /{item.minStock} min

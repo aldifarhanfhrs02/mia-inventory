@@ -3,6 +3,8 @@
 import {
   AlertTriangle,
   CheckCircle2,
+  Eye,
+  EyeOff,
   HelpCircle,
   Package,
   Wallet,
@@ -11,10 +13,13 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { KpiCard } from "@/components/shared/kpi-card";
+import { useAssetsVisible } from "@/lib/hooks/use-assets-visible";
+import { cn } from "@/lib/utils";
+import { formatPrice } from "@/lib/utils/format";
 import type { DashboardKpi } from "@/lib/types";
 
 interface CardDef {
-  key: keyof DashboardKpi;
+  key: Exclude<keyof DashboardKpi, "totalAsset">;
   title: string;
   Icon: LucideIcon;
   accentClass: string;
@@ -69,15 +74,46 @@ const CARDS: CardDef[] = [
     iconBgClass: "bg-chart-5/15",
     filter: "unassigned",
   },
-  {
-    key: "totalAsset",
-    title: "Total Asset",
-    Icon: Wallet,
-    accentClass: "text-primary",
-    borderClass: "border-l-primary",
-    iconBgClass: "bg-primary/15",
-  },
 ];
+
+/** Special-case the Total Asset card: Rp format + eye toggle for sensitivity. */
+function TotalAssetCard({ value }: { value: number | null }) {
+  const { visible, toggle, mounted } = useAssetsVisible();
+  const display =
+    value == null ? "—" : visible || !mounted ? formatPrice(value) : "Rp •••";
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-l-4 border-l-primary bg-card p-4 text-left shadow-sm">
+      <div className="rounded-md bg-primary/15 p-2">
+        <Wallet className="h-5 w-5 text-primary" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-medium text-muted-foreground">
+          Total Asset
+        </p>
+        <p
+          className={cn(
+            "truncate text-lg font-semibold tabular-nums text-foreground",
+            !visible && mounted && "tracking-widest",
+          )}
+        >
+          {display}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={toggle}
+        title={visible ? "Sembunyikan nilai aset" : "Tampilkan nilai aset"}
+        className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+      >
+        {visible ? (
+          <Eye className="h-4 w-4" />
+        ) : (
+          <EyeOff className="h-4 w-4" />
+        )}
+      </button>
+    </div>
+  );
+}
 
 /** Row of 6 KPI cards. Clicking a card opens Master Part with a filter. */
 export function KpiGrid({ kpi }: { kpi: DashboardKpi }) {
@@ -103,6 +139,7 @@ export function KpiGrid({ kpi }: { kpi: DashboardKpi }) {
           }
         />
       ))}
+      <TotalAssetCard value={kpi.totalAsset} />
     </div>
   );
 }

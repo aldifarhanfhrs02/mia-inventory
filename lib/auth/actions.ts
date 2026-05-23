@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { activityLogs, users } from "@/lib/db/schema";
 import { getServerSession, SESSION_COOKIE, SESSION_MAX_AGE, signToken } from "./session";
 import { hashPassword, verifyPassword } from "./password";
 import { ChangePasswordSchema, LoginSchema } from "@/lib/validations/users.schema";
@@ -83,14 +83,23 @@ export async function changePassword(
     if (!ok) return { ok: false, error: "Password lama salah" };
   }
 
-  await db
-    .update(users)
-    .set({
-      passwordHash: await hashPassword(parsed.data.newPassword),
-      mustChangePassword: false,
-      updatedAt: new Date(),
-    })
-    .where(eq(users.id, user.id));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(users)
+      .set({
+        passwordHash: await hashPassword(parsed.data.newPassword),
+        mustChangePassword: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id));
+    await tx.insert(activityLogs).values({
+      userId: session.user.id,
+      action: "CHANGE_PASSWORD",
+      entityType: "User",
+      entityId: user.id,
+      changes: { before: { nik: user.nik } },
+    });
+  });
 
   return { ok: true, data: null };
 }

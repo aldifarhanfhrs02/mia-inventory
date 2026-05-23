@@ -138,7 +138,7 @@ export function StockTakingClient({ rows }: { rows: PartWithStock[] }) {
   const stat = (label: string, value: number, className?: string) => (
     <span>
       <span className="text-muted-foreground">{label} </span>
-      <span className={cn("font-mono font-semibold", className)}>{value}</span>
+      <span className={cn("tabular-nums font-semibold", className)}>{value}</span>
     </span>
   );
 
@@ -225,16 +225,16 @@ export function StockTakingClient({ rows }: { rows: PartWithStock[] }) {
                   </TableCell>
                   <TableCell className="font-medium">{p.partName}</TableCell>
                   <TableCell>{p.maker}</TableCell>
-                  <TableCell className="font-mono text-xs">
+                  <TableCell className="tabular-nums text-xs">
                     {p.partCode}
                   </TableCell>
-                  <TableCell className="font-mono text-xs">
+                  <TableCell className="tabular-nums text-xs">
                     {p.storageAddr}
                   </TableCell>
                   <TableCell>
                     <TypeBadge type={p.type} />
                   </TableCell>
-                  <TableCell className="text-right font-mono">
+                  <TableCell className="text-right tabular-nums">
                     {p.currentStock}
                   </TableCell>
                   <TableCell>{p.unit}</TableCell>
@@ -245,7 +245,7 @@ export function StockTakingClient({ rows }: { rows: PartWithStock[] }) {
                       onChange={(e) =>
                         setActuals((a) => ({ ...a, [p.id]: e.target.value }))
                       }
-                      className="mx-auto h-8 w-20 text-center font-mono"
+                      className="mx-auto h-8 w-20 text-center tabular-nums"
                     />
                   </TableCell>
                   <TableCell className="text-center">
