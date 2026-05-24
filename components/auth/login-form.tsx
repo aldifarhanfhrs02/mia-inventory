@@ -19,7 +19,7 @@ export function LoginForm() {
     e.preventDefault();
     setError("");
     if (!nik.trim() || !password.trim()) {
-      setError("NIK dan password wajib diisi");
+      setError("Employee ID and password are required");
       return;
     }
     setLoading(true);
@@ -51,7 +51,7 @@ export function LoginForm() {
             autoFocus
             value={nik}
             onChange={(e) => setNik(e.target.value)}
-            placeholder="NIK"
+            placeholder="Employee ID"
             autoComplete="username"
             className="flex-1 bg-transparent py-3 pr-3 text-sm outline-none placeholder:text-muted-foreground"
           />
@@ -74,7 +74,7 @@ export function LoginForm() {
             type="button"
             onClick={() => setShowPwd((s) => !s)}
             tabIndex={-1}
-            aria-label={showPwd ? "Sembunyikan password" : "Tampilkan password"}
+            aria-label={showPwd ? "Hide password" : "Show password"}
             className="mr-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-primary"
           >
             {showPwd ? (

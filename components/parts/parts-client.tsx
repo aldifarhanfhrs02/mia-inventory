@@ -29,6 +29,7 @@ interface PartsClientProps {
   isAdmin: boolean;
   makers: string[];
   categories: string[];
+  units: string[];
   usedBarcodes: string[];
   usedAddresses: string[];
 }
@@ -42,6 +43,7 @@ export function PartsClient({
   isAdmin,
   makers,
   categories,
+  units,
   usedBarcodes,
   usedAddresses,
 }: PartsClientProps) {
@@ -62,7 +64,7 @@ export function PartsClient({
     startTransition(async () => {
       const d = await getPartDetail(part.id);
       if (d) setDetail(d as PartDetail);
-      else toast.error("Part tidak ditemukan");
+      else toast.error("Part not found");
     });
 
   const openStorageHistory = (addr: string) =>
@@ -103,6 +105,8 @@ export function PartsClient({
       <PartFormDialog
         open={addOpen}
         onOpenChange={setAddOpen}
+        units={units}
+        categories={categories}
         usedBarcodes={usedBarcodes}
         usedAddresses={usedAddresses}
       />
@@ -111,6 +115,8 @@ export function PartsClient({
         open={!!editPart}
         onOpenChange={(open) => !open && setEditPart(null)}
         part={editPart}
+        units={units}
+        categories={categories}
       />
       <AssignLocationDialog
         key={`assign-${assignPart?.id ?? "none"}`}

@@ -34,6 +34,8 @@ interface GetPartsParams {
   status?: string[];
   maker?: string[];
   category?: string[];
+  /** Source / partClass filter — e.g. ["consumable", "existing_project"]. */
+  partClass?: string[];
   /** ISO date strings (YYYY-MM-DD) — inclusive range on `updatedAt`. */
   updatedFrom?: string;
   updatedTo?: string;
@@ -124,6 +126,7 @@ export async function getParts(params: GetPartsParams): Promise<{
     status = [],
     maker = [],
     category = [],
+    partClass = [],
     updatedFrom = "",
     updatedTo = "",
     page = 1,
@@ -154,6 +157,8 @@ export async function getParts(params: GetPartsParams): Promise<{
   if (maker.length) rows = rows.filter((p) => maker.includes(p.maker));
   if (category.length)
     rows = rows.filter((p) => category.includes(p.category));
+  if (partClass.length)
+    rows = rows.filter((p) => partClass.includes(p.partClass));
   if (status.length) {
     rows = rows.filter((p) =>
       status.some((s) =>
@@ -195,14 +200,22 @@ export async function getParts(params: GetPartsParams): Promise<{
 export async function getFilterOptions(): Promise<{
   makers: string[];
   categories: string[];
+  units: string[];
   usedBarcodes: string[];
   usedAddresses: string[];
 }> {
   const rows = await loadPartsWithStock();
   const active = rows.filter((r) => r.status === "active");
+
+  // Units list = default 8 units (always present) ∪ distinct values already in DB.
+  // CreatableSelect lets users add new units inline; they persist via parts.unit.
+  const DEFAULT_UNITS = ["pcs", "set", "mtr", "kg", "lbr", "btg", "rol", "pak"];
+  const distinctUnits = rows.map((r) => r.unit).filter(Boolean);
+
   return {
     makers: [...new Set(rows.map((r) => r.maker))].sort(),
     categories: [...new Set(rows.map((r) => r.category))].sort(),
+    units: [...new Set([...DEFAULT_UNITS, ...distinctUnits])].sort(),
     usedBarcodes: active
       .map((r) => r.barcode)
       .filter((b): b is string => !!b),
@@ -280,7 +293,7 @@ export async function createPart(
     .from(parts)
     .where(eq(parts.partCode, v.partCode));
   if (dup.length > 0) {
-    return { ok: false, error: "Part Code sudah ada di database" };
+    return { ok: false, error: "Part Code already exists" };
   }
 
   const hasLocation = !!v.storageType;
@@ -341,7 +354,7 @@ export async function createPart(
     revalidatePath("/parts");
     return { ok: true, data: { id } };
   } catch {
-    return { ok: false, error: "Gagal menyimpan part" };
+    return { ok: false, error: "Failed to save part" };
   }
 }
 
@@ -361,14 +374,14 @@ export async function updatePart(
   const v = parsed.data;
 
   const existing = await db.select().from(parts).where(eq(parts.id, id));
-  if (existing.length === 0) return { ok: false, error: "Part tidak ditemukan" };
+  if (existing.length === 0) return { ok: false, error: "Part not found" };
 
   const dup = await db
     .select({ id: parts.id })
     .from(parts)
     .where(eq(parts.partCode, v.partCode));
   if (dup.some((d) => d.id !== id)) {
-    return { ok: false, error: "Part Code sudah dipakai part lain" };
+    return { ok: false, error: "Part Code is already used by another part" };
   }
 
   // Edit does NOT touch storage/barcode — location is managed by assignLocation.
@@ -401,7 +414,7 @@ export async function updatePart(
     revalidatePath("/parts");
     return { ok: true, data: { id } };
   } catch {
-    return { ok: false, error: "Gagal memperbarui part" };
+    return { ok: false, error: "Failed to update part" };
   }
 }
 
@@ -415,7 +428,7 @@ export async function setPartActive(
   if (!isAdmin(session)) return { ok: false, error: "Forbidden" };
 
   const existing = await db.select().from(parts).where(eq(parts.id, id));
-  if (existing.length === 0) return { ok: false, error: "Part tidak ditemukan" };
+  if (existing.length === 0) return { ok: false, error: "Part not found" };
 
   try {
     await db.transaction(async (tx) => {
@@ -442,7 +455,7 @@ export async function setPartActive(
     revalidatePath("/parts");
     return { ok: true, data: null };
   } catch {
-    return { ok: false, error: "Gagal mengubah status part" };
+    return { ok: false, error: "Failed to change part status" };
   }
 }
 
@@ -456,7 +469,7 @@ export async function deletePart(id: string): Promise<ActionResult<null>> {
     .select()
     .from(parts)
     .where(and(eq(parts.id, id), isNull(parts.deletedAt)));
-  if (existing.length === 0) return { ok: false, error: "Part tidak ditemukan" };
+  if (existing.length === 0) return { ok: false, error: "Part not found" };
 
   try {
     await db.transaction(async (tx) => {
@@ -471,7 +484,7 @@ export async function deletePart(id: string): Promise<ActionResult<null>> {
     revalidatePath("/parts");
     return { ok: true, data: null };
   } catch {
-    return { ok: false, error: "Gagal menghapus part" };
+    return { ok: false, error: "Failed to delete part" };
   }
 }
 
@@ -496,11 +509,11 @@ export async function assignLocation(
     !(storageBox > 0) ||
     !(storageBoxKecil > 0)
   ) {
-    return { ok: false, error: "Lengkapi semua field lokasi" };
+    return { ok: false, error: "Fill in all location fields" };
   }
 
   const existing = await db.select().from(parts).where(eq(parts.id, id));
-  if (existing.length === 0) return { ok: false, error: "Part tidak ditemukan" };
+  if (existing.length === 0) return { ok: false, error: "Part not found" };
 
   const barcode = generateBarcode(
     storageType,
@@ -523,7 +536,7 @@ export async function assignLocation(
   if (clash.some((c) => c.id !== id)) {
     return {
       ok: false,
-      error: "Lokasi storage sudah digunakan part aktif lain",
+      error: "Storage location is already used by another active part",
     };
   }
 
@@ -549,7 +562,7 @@ export async function assignLocation(
     revalidatePath("/parts");
     return { ok: true, data: { barcode } };
   } catch {
-    return { ok: false, error: "Gagal assign lokasi" };
+    return { ok: false, error: "Failed to assign location" };
   }
 }
 
@@ -576,11 +589,7 @@ export interface ImportRow {
 }
 
 const VALID_TYPES = ["Electrical", "Mechanical", "Fabrication"] as const;
-const VALID_CLASSES = [
-  "consumable",
-  "existing_project",
-  "new_part",
-] as const;
+const VALID_CLASSES = ["consumable", "existing_project"] as const;
 const VALID_UNITS = [
   "pcs",
   "set",
@@ -732,7 +741,7 @@ export async function importParts(
     revalidatePath("/parts");
     return { ok: true, data: { created, skipped } };
   } catch {
-    return { ok: false, error: "Gagal mengimpor part" };
+    return { ok: false, error: "Failed to import parts" };
   }
 }
 

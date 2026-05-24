@@ -13,6 +13,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { CreatableSelect } from "@/components/shared/creatable-select";
 import { TypeBadge } from "@/components/shared/type-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,7 +47,8 @@ const EMPTY = {
   type: "Electrical" as PartType,
   category: "",
   partClass: "consumable" as PartClass,
-  unit: "pcs",
+  // Unit is free-form (CreatableSelect can add new ones); keep as wide string.
+  unit: "pcs" as string,
   description: "",
   remarks: "",
   price: "",
@@ -62,17 +64,15 @@ const EMPTY = {
 type FormState = typeof EMPTY;
 
 const STEPS = [
-  { n: 1, label: "Identitas", icon: Info },
-  { n: 2, label: "Lokasi & Stok", icon: MapPin },
+  { n: 1, label: "Identity", icon: Info },
+  { n: 2, label: "Location & Stock", icon: MapPin },
   { n: 3, label: "Preview", icon: CheckCircle2 },
 ] as const;
 
 const TYPES: PartType[] = ["Electrical", "Mechanical", "Fabrication"];
-const UNITS = ["pcs", "set", "mtr", "kg", "lbr", "btg", "rol", "pak"];
 const PART_CLASSES: { value: PartClass; label: string }[] = [
   { value: "consumable", label: "Consumable" },
   { value: "existing_project", label: "Existing Project" },
-  { value: "new_part", label: "New Part" },
 ];
 const STORAGE_TYPES: { value: "A" | "B"; label: string }[] = [
   { value: "A", label: "A — Lemari" },
@@ -109,6 +109,8 @@ function Field({
 interface PartFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  units: string[];
+  categories: string[];
   usedBarcodes: string[];
   usedAddresses: string[];
 }
@@ -117,6 +119,8 @@ interface PartFormDialogProps {
 export function PartFormDialog({
   open,
   onOpenChange,
+  units,
+  categories,
   usedBarcodes,
   usedAddresses,
 }: PartFormDialogProps) {
@@ -195,7 +199,7 @@ export function PartFormDialog({
     };
     const check = CreatePartSchema.safeParse(input);
     if (!check.success) {
-      toast.error(check.error.issues[0]?.message ?? "Periksa kembali isian");
+      toast.error(check.error.issues[0]?.message ?? "Please review your input");
       return;
     }
     setSaving(true);
@@ -222,9 +226,9 @@ export function PartFormDialog({
               <Package className="h-5 w-5" />
             </div>
             <div>
-              <DialogTitle className="text-lg">Tambah Part Baru</DialogTitle>
+              <DialogTitle className="text-lg">Add New Part</DialogTitle>
               <DialogDescription className="text-xs">
-                Lengkapi data part untuk menambahkannya ke inventaris.
+                Fill in the part data to add it to the inventory.
               </DialogDescription>
             </div>
           </div>
@@ -300,7 +304,7 @@ export function PartFormDialog({
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-chart-2/15 text-chart-2">
                 <CheckCircle2 className="h-9 w-9" />
               </div>
-              <p className="text-lg font-semibold">Part Berhasil Ditambahkan</p>
+              <p className="text-lg font-semibold">Part Added Successfully</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 <strong className="text-foreground">{form.partName}</strong>{" "}
                 <span className="tabular-nums">({form.partCode})</span>
@@ -314,26 +318,26 @@ export function PartFormDialog({
               <div className="mt-6 flex gap-2">
                 <Button variant="outline" onClick={reset}>
                   <Plus className="mr-1 h-4 w-4" />
-                  Tambah Lagi
+                  Add Another
                 </Button>
-                <Button onClick={close}>Selesai</Button>
+                <Button onClick={close}>Done</Button>
               </div>
             </div>
           ) : step === 1 ? (
             // ── Step 1: Identitas ──────────────────────────────────────
             <div className="space-y-4">
-              <SectionHeader icon={Info}>Identitas Part</SectionHeader>
+              <SectionHeader icon={Info}>Part Identity</SectionHeader>
               <Field label="Part Name" required>
                 <Input
                   value={form.partName}
                   onChange={(e) => set("partName", e.target.value)}
-                  placeholder="Contoh: Sensor Proximity M12"
+                  placeholder="e.g. Sensor Proximity M12"
                 />
               </Field>
               <Field
                 label="Part Code"
                 required
-                hint="Format internal mengikuti konvensi MIA-XX-NNN."
+                hint="Internal format follows the MIA-XX-NNN convention."
               >
                 <Input
                   value={form.partCode}
@@ -348,7 +352,7 @@ export function PartFormDialog({
                   <Input
                     value={form.maker}
                     onChange={(e) => set("maker", e.target.value)}
-                    placeholder="Contoh: Keyence"
+                    placeholder="e.g. Keyence"
                   />
                 </Field>
                 <Field label="Type" required>
@@ -393,31 +397,23 @@ export function PartFormDialog({
                   </Select>
                 </Field>
                 <Field label="Category" required>
-                  <Input
+                  <CreatableSelect
                     value={form.category}
-                    onChange={(e) => set("category", e.target.value)}
-                    placeholder="Contoh: Sensor"
+                    onChange={(v) => set("category", v)}
+                    options={categories}
+                    placeholder="Select or add category…"
                   />
                 </Field>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Unit" required>
-                  <Select
+                  <CreatableSelect
                     value={form.unit}
-                    onValueChange={(v) => set("unit", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {UNITS.map((u) => (
-                        <SelectItem key={u} value={u}>
-                          {u}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(v) => set("unit", v)}
+                    options={units}
+                    placeholder="Select or add unit…"
+                  />
                 </Field>
                 <Field label="Price per Unit">
                   <div className="relative">
@@ -499,17 +495,17 @@ export function PartFormDialog({
                   </Field>
                 </div>
                 <p className="mt-1.5 text-[11px] text-muted-foreground">
-                  Aturan: Min ≤ Std ≤ Max. Initial = stok awal yang sudah ada di
-                  gudang.
+                  Rule: Min ≤ Std ≤ Max. Initial = starting stock already in the
+                  warehouse.
                 </p>
               </div>
 
               {/* Storage Location */}
               <div>
                 <SectionHeader icon={MapPin}>
-                  Lokasi Penyimpanan{" "}
+                  Storage Location{" "}
                   <span className="ml-1 font-normal text-muted-foreground">
-                    (opsional)
+                    (optional)
                   </span>
                 </SectionHeader>
                 <div className="mt-3 grid grid-cols-4 gap-2">
@@ -562,8 +558,8 @@ export function PartFormDialog({
                   </Field>
                 </div>
                 <p className="mt-1.5 text-[11px] text-muted-foreground">
-                  Kosongkan semuanya jika part belum punya lokasi — status akan
-                  ditandai <strong>unassigned</strong>.
+                  Leave all empty if the part has no location yet — status will
+                  be marked <strong>unassigned</strong>.
                 </p>
 
                 {/* Barcode preview — always visible, with an availability badge. */}
@@ -578,23 +574,23 @@ export function PartFormDialog({
                 >
                   <div className="mb-2 flex items-center justify-between">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Preview Barcode
+                      Barcode Preview
                     </p>
                     {hasAllStorage ? (
                       conflict ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-semibold text-destructive">
                           <AlertTriangle className="h-3 w-3" />
-                          Sudah Digunakan
+                          Already Used
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 rounded-full bg-chart-2/15 px-2 py-0.5 text-[10px] font-semibold text-chart-2">
                           <CheckCircle2 className="h-3 w-3" />
-                          Tersedia
+                          Available
                         </span>
                       )
                     ) : (
                       <span className="text-[10px] text-muted-foreground">
-                        Lengkapi semua field lokasi
+                        Fill in all location fields
                       </span>
                     )}
                   </div>
@@ -618,12 +614,12 @@ export function PartFormDialog({
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
                     <div className="text-xs">
                       <p className="font-semibold text-destructive">
-                        Storage sudah digunakan!
+                        Storage already used!
                       </p>
                       <p className="mt-0.5 text-muted-foreground">
-                        Alamat <code className="tabular-nums">{storageAddr}</code>{" "}
-                        dipakai part aktif lain. Nonaktifkan part itu dulu, atau
-                        pilih lokasi lain.
+                        Address <code className="tabular-nums">{storageAddr}</code>{" "}
+                        is used by another active part. Deactivate that part first,
+                        or pick a different location.
                       </p>
                     </div>
                   </div>
@@ -634,11 +630,11 @@ export function PartFormDialog({
             // ── Step 3: Preview ────────────────────────────────────────
             <div className="space-y-4">
               <SectionHeader icon={CheckCircle2}>
-                Periksa &amp; Konfirmasi
+                Review &amp; Confirm
               </SectionHeader>
 
               <PreviewCard
-                title="Identitas Part"
+                title="Part Identity"
                 icon={Info}
                 items={[
                   ["Part Name", form.partName || "—"],
@@ -657,7 +653,7 @@ export function PartFormDialog({
               />
 
               <PreviewCard
-                title="Stok & Lokasi"
+                title="Stock & Location"
                 icon={Tag}
                 items={[
                   [
@@ -668,7 +664,7 @@ export function PartFormDialog({
                   ["Initial Stock", form.initialStock || 0, "mono"],
                   [
                     "Storage",
-                    hasAllStorage ? storageAddr : "Belum di-assign",
+                    hasAllStorage ? storageAddr : "Not assigned",
                     "mono",
                   ],
                   ...(hasAllStorage
@@ -690,7 +686,7 @@ export function PartFormDialog({
                 >
                   <div className="mb-2 flex items-center justify-between">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Status Lokasi
+                      Location Status
                     </p>
                     {conflict ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-semibold text-destructive">
@@ -700,7 +696,7 @@ export function PartFormDialog({
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-full bg-chart-2/15 px-2 py-0.5 text-[10px] font-semibold text-chart-2">
                         <CheckCircle2 className="h-3 w-3" />
-                        Tersedia
+                        Available
                       </span>
                     )}
                   </div>
@@ -714,8 +710,8 @@ export function PartFormDialog({
                   </div>
                   {conflict && (
                     <p className="mt-2 text-[11px] text-destructive">
-                      Lokasi ini sudah dipakai part aktif lain. Kembali ke step
-                      2 untuk memilih lokasi lain.
+                      This location is used by another active part. Go back to
+                      step 2 to choose a different location.
                     </p>
                   )}
                 </div>
@@ -723,7 +719,7 @@ export function PartFormDialog({
 
               {(form.description || form.remarks) && (
                 <PreviewCard
-                  title="Catatan"
+                  title="Notes"
                   icon={Info}
                   items={[
                     ...(form.description
@@ -743,7 +739,7 @@ export function PartFormDialog({
         {!done && (
           <div className="flex items-center gap-2 border-t bg-muted/20 px-6 py-3">
             <Button variant="ghost" onClick={close}>
-              Batal
+              Cancel
             </Button>
             <div className="flex-1" />
             {step > 1 && (
@@ -752,7 +748,7 @@ export function PartFormDialog({
                 onClick={() => setStep((s) => s - 1)}
                 disabled={saving}
               >
-                ← Kembali
+                ← Back
               </Button>
             )}
             {step < 3 ? (
@@ -760,12 +756,12 @@ export function PartFormDialog({
                 disabled={(step === 1 && !canStep2) || (step === 2 && conflict)}
                 onClick={() => setStep((s) => s + 1)}
               >
-                Lanjut →
+                Next →
               </Button>
             ) : (
               <Button disabled={saving || conflict} onClick={submit}>
                 <Plus className="mr-1 h-4 w-4" />
-                {saving ? "Menyimpan…" : "Simpan Part"}
+                {saving ? "Saving…" : "Save Part"}
               </Button>
             )}
           </div>

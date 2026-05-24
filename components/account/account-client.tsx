@@ -1,12 +1,26 @@
 "use client";
 
-import { ChevronRight, KeyRound } from "lucide-react";
-import { useState } from "react";
-import { RoleBadge } from "@/components/shared/role-badge";
-import { Badge } from "@/components/ui/badge";
-import { formatDate, formatDateTime } from "@/lib/utils/format";
+import { KeyRound, UserCircle } from "lucide-react";
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { ActivityRow } from "@/lib/actions/activity-logs.actions";
 import type { UserRole, UserStatus } from "@/lib/types";
+import { AccountMetaCard } from "./account-meta-card";
+import { ActivityLogCard } from "./activity-log-card";
 import { ChangePasswordForm } from "./change-password-form";
+import { ProfileCard } from "./profile-card";
+import { SecurityTipsCard } from "./security-tips-card";
+import { SessionInfoCard } from "./session-info-card";
 
 interface AccountClientProps {
   nik: string;
@@ -15,73 +29,88 @@ interface AccountClientProps {
   status: UserStatus;
   lastLoginAt: Date | null;
   createdAt: Date;
+  issuedAt: number;
+  expiresAt: number;
+  activity: ActivityRow[];
 }
 
-/** Account page — profile view with a toggle to the change-password form. */
+type TabValue = "profile" | "security";
+
+/** Account page — Tabs (Profil / Keamanan), persisted via ?tab= URL param. */
 export function AccountClient(props: AccountClientProps) {
-  const [view, setView] = useState<"profile" | "password">("profile");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  if (view === "password") {
-    return <ChangePasswordForm onBack={() => setView("profile")} />;
-  }
+  const raw = searchParams.get("tab");
+  const tab: TabValue = raw === "security" ? "security" : "profile";
 
-  const rows: [string, React.ReactNode][] = [
-    ["NIK", <span key="n" className="tabular-nums">{props.nik}</span>],
-    ["Nama Lengkap", props.fullName],
-    ["Role", <RoleBadge key="r" role={props.role} />],
-    [
-      "Status",
-      <Badge key="s" variant={props.status === "active" ? "success" : "secondary"}>
-        {props.status === "active" ? "Active" : "Inactive"}
-      </Badge>,
-    ],
-    [
-      "Login Terakhir",
-      <span key="l" className="tabular-nums text-xs">
-        {formatDateTime(props.lastLoginAt)}
-      </span>,
-    ],
-    [
-      "Terdaftar Sejak",
-      <span key="c" className="tabular-nums text-xs">
-        {formatDate(props.createdAt)}
-      </span>,
-    ],
-  ];
+  const setTab = (next: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === "profile") params.delete("tab");
+    else params.set("tab", next);
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  };
 
   return (
-    <div className="mx-auto max-w-lg space-y-4 rounded-lg border bg-card p-6">
-      <div className="flex items-center gap-4">
-        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-xl font-semibold text-primary-foreground">
-          {props.fullName.charAt(0).toUpperCase()}
-        </span>
-        <div>
-          <p className="text-lg font-semibold">{props.fullName}</p>
-          <RoleBadge role={props.role} />
+    <Tabs value={tab} onValueChange={setTab} className="space-y-6">
+      <TabsList className="h-10 border bg-card p-1">
+        <TabsTrigger value="profile" className="gap-1.5 px-4 py-1.5">
+          <UserCircle className="h-4 w-4" />
+          Profile
+        </TabsTrigger>
+        <TabsTrigger value="security" className="gap-1.5 px-4 py-1.5">
+          <KeyRound className="h-4 w-4" />
+          Security
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="profile" className="mt-0 space-y-4">
+        <div className="grid gap-4 lg:grid-cols-3">
+          <ProfileCard
+            className="lg:col-span-2"
+            nik={props.nik}
+            fullName={props.fullName}
+            role={props.role}
+            status={props.status}
+          />
+          <AccountMetaCard
+            lastLoginAt={props.lastLoginAt}
+            createdAt={props.createdAt}
+            status={props.status}
+          />
         </div>
-      </div>
+        <ActivityLogCard rows={props.activity} />
+      </TabsContent>
 
-      <div className="border-t pt-2">
-        {rows.map(([label, value]) => (
-          <div
-            key={label}
-            className="flex items-center justify-between py-2 text-sm"
-          >
-            <span className="text-muted-foreground">{label}</span>
-            <span>{value}</span>
+      <TabsContent value="security" className="mt-0">
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="lg:col-span-2">
+            <CardHeader className="border-b pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="rounded-md bg-primary/15 p-1.5 text-primary">
+                  <KeyRound className="h-4 w-4" />
+                </div>
+                <CardTitle className="text-base">Change Password</CardTitle>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Make sure the new password meets all requirements below.
+              </p>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <ChangePasswordForm embedded />
+            </CardContent>
+          </Card>
+          <div className="space-y-4">
+            <SessionInfoCard
+              issuedAt={props.issuedAt}
+              expiresAt={props.expiresAt}
+            />
+            <SecurityTipsCard />
           </div>
-        ))}
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setView("password")}
-        className="flex w-full items-center gap-2 rounded-md border p-3 text-sm font-medium hover:bg-accent/40"
-      >
-        <KeyRound className="h-4 w-4" />
-        Ganti Password
-        <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
-      </button>
-    </div>
+        </div>
+      </TabsContent>
+    </Tabs>
   );
 }

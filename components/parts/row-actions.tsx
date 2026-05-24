@@ -49,15 +49,15 @@ export function RowActions({
   const deactivate = () =>
     startTransition(async () => {
       const res = await setPartActive(part.id, false);
-      if (res.ok) toast.success("Part dinonaktifkan");
-      else toast.error(res.error ?? "Gagal");
+      if (res.ok) toast.success("Part deactivated");
+      else toast.error(res.error ?? "Failed");
     });
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         className="rounded-md p-1 hover:bg-accent"
-        aria-label="Aksi"
+        aria-label="Actions"
         disabled={pending}
       >
         <MoreHorizontal className="h-4 w-4" />
@@ -65,7 +65,7 @@ export function RowActions({
       <DropdownMenuContent align="end" className="w-48">
         <DropdownMenuItem onClick={() => onView(part)}>
           <Search className="mr-2 h-4 w-4" />
-          Lihat Detail
+          View Detail
         </DropdownMenuItem>
         {isAdmin && (
           <DropdownMenuItem onClick={() => onEdit(part)}>
@@ -76,7 +76,7 @@ export function RowActions({
         {isAdmin && part.status === "unassigned" && (
           <DropdownMenuItem onClick={() => onAssign(part)}>
             <MapPin className="mr-2 h-4 w-4 text-chart-1" />
-            Assign Lokasi
+            Assign Location
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
@@ -102,7 +102,7 @@ export function RowActions({
               onClick={deactivate}
             >
               <X className="mr-2 h-4 w-4" />
-              Nonaktifkan
+              Deactivate
             </DropdownMenuItem>
           </>
         )}

@@ -42,9 +42,9 @@ const FILTER_LABEL: Record<string, string> = {
   type: "Type",
   maker: "Maker",
   category: "Category",
-  search: "Pencarian",
-  updatedFrom: "Diupdate dari",
-  updatedTo: "Diupdate sampai",
+  search: "Search",
+  updatedFrom: "Updated from",
+  updatedTo: "Updated to",
 };
 
 interface ColumnGroup {
@@ -65,7 +65,7 @@ interface ColumnGroup {
 const COLUMN_GROUPS: ColumnGroup[] = [
   {
     key: "identity",
-    label: "Identitas",
+    label: "Identity",
     description: "Code, Name, Maker, Type, Source, Category, Unit",
     icon: Tag,
     required: true,
@@ -73,14 +73,14 @@ const COLUMN_GROUPS: ColumnGroup[] = [
   },
   {
     key: "stock",
-    label: "Stok",
+    label: "Stock",
     description: "Current Stock, Min, Std, Max",
     icon: TrendingUp,
     defaultOn: true,
   },
   {
     key: "location",
-    label: "Lokasi",
+    label: "Location",
     description: "Lemari, Number, Box, Box Kecil, Storage Address, Barcode",
     icon: MapPin,
     defaultOn: true,
@@ -94,7 +94,7 @@ const COLUMN_GROUPS: ColumnGroup[] = [
   },
   {
     key: "notes",
-    label: "Catatan",
+    label: "Notes",
     description: "Description, Remarks",
     icon: ClipboardList,
     defaultOn: false,
@@ -139,7 +139,7 @@ export function ExportDialog({ open, onOpenChange, rows }: ExportDialogProps) {
     setLoadingAll(true);
     getAllPartsForExport()
       .then((data) => setAllParts(data))
-      .catch(() => toast.error("Gagal memuat data semua part"))
+      .catch(() => toast.error("Failed to load all parts data"))
       .finally(() => setLoadingAll(false));
   }, [scope, allParts]);
 
@@ -323,23 +323,28 @@ export function ExportDialog({ open, onOpenChange, rows }: ExportDialogProps) {
                 {COLUMN_GROUPS.map((g) => {
                   const on = cols.has(g.key);
                   const Icon = g.icon;
+                  // Use <label> (not <button>) so the inner shadcn Checkbox —
+                  // which is itself a <button role="checkbox"> — is not nested
+                  // inside another <button> (invalid HTML, hydration error).
                   return (
-                    <button
+                    <label
                       key={g.key}
-                      type="button"
-                      onClick={() => toggleCol(g.key, g.required)}
-                      disabled={g.required}
                       className={cn(
                         "flex items-start gap-2.5 rounded-lg border p-2.5 text-left transition-colors",
                         on
                           ? "border-primary bg-primary/5"
                           : "border-border hover:bg-accent/30",
-                        g.required && "cursor-default",
+                        g.required
+                          ? "cursor-default"
+                          : "cursor-pointer",
                       )}
                     >
                       <Checkbox
                         checked={on}
                         disabled={g.required}
+                        onCheckedChange={() =>
+                          toggleCol(g.key, g.required)
+                        }
                         className="mt-0.5"
                       />
                       <div className="min-w-0 flex-1">
@@ -356,7 +361,7 @@ export function ExportDialog({ open, onOpenChange, rows }: ExportDialogProps) {
                           {g.description}
                         </p>
                       </div>
-                    </button>
+                    </label>
                   );
                 })}
               </div>

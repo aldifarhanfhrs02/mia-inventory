@@ -37,7 +37,6 @@ import type {
 const PART_CLASS_LABEL: Record<PartClass, string> = {
   consumable: "Consumable",
   existing_project: "Existing Project",
-  new_part: "New Part",
 };
 
 export interface PartDetail {
@@ -192,7 +191,7 @@ export function PartDetailSheet({
                 >
                   {/* Stock hero card */}
                   <div className="rounded-xl border bg-card p-4 shadow-sm">
-                    <SectionTitle icon={TrendingUp}>Stok Saat Ini</SectionTitle>
+                    <SectionTitle icon={TrendingUp}>Current Stock</SectionTitle>
                     <div className="flex items-end justify-between">
                       <div className="flex items-baseline gap-1.5">
                         <span
@@ -270,7 +269,7 @@ export function PartDetailSheet({
 
                   {/* Identity */}
                   <div className="rounded-xl border bg-card p-4">
-                    <SectionTitle icon={Info}>Identitas Part</SectionTitle>
+                    <SectionTitle icon={Info}>Part Identity</SectionTitle>
                     <div className="divide-y">
                       <Row label="Maker" value={p.maker} />
                       <Row
@@ -289,16 +288,16 @@ export function PartDetailSheet({
                   {/* Storage */}
                   <div className="rounded-xl border bg-card p-4">
                     <SectionTitle icon={MapPin}>
-                      Lokasi Penyimpanan
+                      Storage Location
                     </SectionTitle>
                     {p.storageType ? (
                       <div className="divide-y">
-                        <Row label="Alamat" value={p.storageAddr} mono />
+                        <Row label="Address" value={p.storageAddr} mono />
                         <Row label="Barcode" value={p.barcode ?? "—"} mono />
                       </div>
                     ) : (
                       <p className="rounded-md bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
-                        Belum ada lokasi — part berstatus{" "}
+                        No location yet — part status is{" "}
                         <span className="font-semibold">unassigned</span>.
                       </p>
                     )}
@@ -308,7 +307,7 @@ export function PartDetailSheet({
                   {(p.description || p.remarks) && (
                     <div className="rounded-xl border bg-card p-4">
                       <SectionTitle icon={ClipboardList}>
-                        Catatan
+                        Notes
                       </SectionTitle>
                       {p.description && (
                         <div className="mb-2">
@@ -353,7 +352,7 @@ export function PartDetailSheet({
                 <TabsContent value="purchase" className="px-6 pb-6 pt-5">
                   {detail.purchases.length === 0 ? (
                     <EmptyState icon={ShoppingCart}>
-                      Belum ada data purchase untuk part ini.
+                      No purchase data for this part yet.
                     </EmptyState>
                   ) : (
                     <div className="space-y-2">
@@ -383,7 +382,7 @@ export function PartDetailSheet({
                 <TabsContent value="history" className="px-6 pb-6 pt-5">
                   {detail.movements.length === 0 ? (
                     <EmptyState icon={History}>
-                      Belum ada riwayat transaksi.
+                      No transaction history yet.
                     </EmptyState>
                   ) : (
                     <div className="space-y-2">

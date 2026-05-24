@@ -28,6 +28,7 @@ export default async function MasterPartPage({
       status: list("status"),
       maker: list("maker"),
       category: list("category"),
+      partClass: list("partClass"),
       updatedFrom: get("updatedFrom"),
       updatedTo: get("updatedTo"),
       page: Number(get("page") ?? "1") || 1,
@@ -41,7 +42,7 @@ export default async function MasterPartPage({
     <>
       <PageHeader
         title="Master Part"
-        subtitle={`${data.total} part terdaftar`}
+        subtitle={`${data.total} parts registered`}
       />
       <PartsClient
         rows={data.rows}
@@ -51,6 +52,7 @@ export default async function MasterPartPage({
         isAdmin={isAdmin(session)}
         makers={options.makers}
         categories={options.categories}
+        units={options.units}
         usedBarcodes={options.usedBarcodes}
         usedAddresses={options.usedAddresses}
       />

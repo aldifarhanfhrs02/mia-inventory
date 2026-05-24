@@ -3,15 +3,15 @@ import { z } from "zod";
 /** Create-part input. Mirrors PRD-BACKEND §8.1. */
 export const CreatePartSchema = z
   .object({
-    partName: z.string().min(1, "Part Name wajib diisi").max(200),
-    partCode: z.string().min(1, "Part Code wajib diisi").max(50),
-    maker: z.string().min(1, "Maker wajib diisi").max(100),
+    partName: z.string().min(1, "Part Name is required").max(200),
+    partCode: z.string().min(1, "Part Code is required").max(50),
+    maker: z.string().min(1, "Maker is required").max(100),
     type: z.enum(["Electrical", "Mechanical", "Fabrication"]),
-    category: z.string().min(1, "Category wajib diisi").max(50),
+    category: z.string().min(1, "Category is required").max(50),
     partClass: z
-      .enum(["consumable", "existing_project", "new_part"])
+      .enum(["consumable", "existing_project"])
       .default("consumable"),
-    unit: z.string().min(1, "Unit wajib diisi").max(20),
+    unit: z.string().min(1, "Unit is required").max(20),
     description: z.string().max(500).optional(),
     remarks: z.string().max(500).optional(),
 
@@ -56,7 +56,7 @@ export const CreatePartSchema = z
     },
     {
       message:
-        "Lokasi harus diisi lengkap (type, number, box, box kecil) atau tidak sama sekali",
+        "Location must be either fully filled (type, number, box, box kecil) or completely empty",
       path: ["storageType"],
     },
   );
@@ -64,15 +64,15 @@ export const CreatePartSchema = z
 /** Update-part input — identical to create minus the initial stock. */
 export const UpdatePartSchema = z
   .object({
-    partName: z.string().min(1, "Part Name wajib diisi").max(200),
-    partCode: z.string().min(1, "Part Code wajib diisi").max(50),
-    maker: z.string().min(1, "Maker wajib diisi").max(100),
+    partName: z.string().min(1, "Part Name is required").max(200),
+    partCode: z.string().min(1, "Part Code is required").max(50),
+    maker: z.string().min(1, "Maker is required").max(100),
     type: z.enum(["Electrical", "Mechanical", "Fabrication"]),
-    category: z.string().min(1, "Category wajib diisi").max(50),
+    category: z.string().min(1, "Category is required").max(50),
     partClass: z
-      .enum(["consumable", "existing_project", "new_part"])
+      .enum(["consumable", "existing_project"])
       .default("consumable"),
-    unit: z.string().min(1, "Unit wajib diisi").max(20),
+    unit: z.string().min(1, "Unit is required").max(20),
     description: z.string().max(500).optional(),
     remarks: z.string().max(500).optional(),
     minStock: z.number().int().min(0),

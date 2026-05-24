@@ -138,8 +138,8 @@ export function StorageHistoryDialog({
                   Print / Save Barcode
                 </Button>
                 <p className="mt-1 text-[10px] text-zinc-500">
-                  Pilih <strong>Save as PDF</strong> di dialog print untuk
-                  menyimpan.
+                  Choose <strong>Save as PDF</strong> in the print dialog to
+                  save it.
                 </p>
               </div>
             )}
@@ -148,7 +148,7 @@ export function StorageHistoryDialog({
               <p className="mb-1.5 text-sm font-semibold">History Penggunaan</p>
               {data.history.length === 0 ? (
                 <p className="rounded-md border py-6 text-center text-sm text-muted-foreground">
-                  Belum ada riwayat untuk storage ini.
+                  No history for this storage yet.
                 </p>
               ) : (
                 <div className="rounded-md border">
@@ -187,8 +187,8 @@ export function StorageHistoryDialog({
             </div>
 
             <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-              Storage hanya bisa digunakan oleh 1 part aktif. Part harus
-              dinonaktifkan dulu agar lokasi bisa dipakai part lain.
+              Each storage can only be used by 1 active part. The part must be
+              deactivated first before its location can be reused.
             </p>
           </div>
         )}

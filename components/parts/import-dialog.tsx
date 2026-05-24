@@ -61,11 +61,7 @@ import { formatStorageAddr, generateBarcode } from "@/lib/utils/barcode";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const VALID_TYPES = ["Electrical", "Mechanical", "Fabrication"] as const;
-const VALID_CLASSES = [
-  "consumable",
-  "existing_project",
-  "new_part",
-] as const;
+const VALID_CLASSES = ["consumable", "existing_project"] as const;
 const VALID_UNITS = [
   "pcs",
   "set",
@@ -225,7 +221,7 @@ function validateRow(
       issues.push({
         field: "partClass",
         level: "error",
-        message: `Source "${r.partClass}" harus salah satu: consumable / existing_project / new_part`,
+        message: `Source "${r.partClass}" harus salah satu: consumable / existing_project`,
       });
     }
   }
@@ -956,7 +952,7 @@ function UploadStep({
               • Type: <code>Electrical / Mechanical / Fabrication</code>
             </li>
             <li>
-              • Source: <code>consumable / existing_project / new_part</code>
+              • Source: <code>consumable / existing_project</code>
             </li>
             <li>
               • Unit: <code>pcs / set / mtr / kg / lbr / btg / rol / pak</code>

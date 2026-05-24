@@ -162,10 +162,10 @@ export function AssignLocationDialog({
               <MapPin className="h-5 w-5" />
             </div>
             <div>
-              <DialogTitle className="text-lg">Assign Lokasi</DialogTitle>
+              <DialogTitle className="text-lg">Assign Location</DialogTitle>
               <DialogDescription className="text-xs">
-                Tentukan lokasi penyimpanan untuk mengaktifkan part ini. Barcode
-                akan otomatis dibuat dari kombinasi lokasi.
+                Set a storage location to activate this part. The barcode is
+                automatically generated from the location combination.
               </DialogDescription>
             </div>
           </div>
@@ -180,7 +180,7 @@ export function AssignLocationDialog({
                 <CheckCircle2 className="h-9 w-9" />
               </div>
               <p className="text-lg font-semibold">
-                Lokasi Berhasil Di-assign
+                Location Assigned Successfully
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {part?.partName}
@@ -197,7 +197,7 @@ export function AssignLocationDialog({
                 </p>
               </div>
               <Button className="mt-6" onClick={() => onOpenChange(false)}>
-                Selesai
+                Done
               </Button>
             </div>
           ) : (
@@ -225,16 +225,16 @@ export function AssignLocationDialog({
                 <div className="flex items-start gap-2 rounded-lg border border-chart-3/30 bg-chart-3/5 p-2.5">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-chart-3" />
                   <span className="text-xs text-foreground">
-                    Part ini belum memiliki lokasi. Lengkapi 4 field di bawah —
-                    status akan otomatis berubah jadi <strong>active</strong>{" "}
-                    setelah disimpan.
+                    This part has no location yet. Fill in all 4 fields below —
+                    the status will automatically change to <strong>active</strong>{" "}
+                    after saving.
                   </span>
                 </div>
 
                 {/* STORAGE FIELDS */}
                 <section>
                   <SectionHeader icon={MapPin}>
-                    Lokasi Penyimpanan
+                    Storage Location
                   </SectionHeader>
                   <div className="mt-3 grid grid-cols-4 gap-2">
                     <Field label="Lemari" required>
@@ -243,7 +243,7 @@ export function AssignLocationDialog({
                         onValueChange={(v) => set("storageType", v)}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Pilih" />
+                          <SelectValue placeholder="Select" />
                         </SelectTrigger>
                         <SelectContent>
                           {STORAGE_TYPES.map((t) => (
@@ -297,23 +297,23 @@ export function AssignLocationDialog({
                 >
                   <div className="mb-2 flex items-center justify-between">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Preview Barcode
+                      Barcode Preview
                     </p>
                     {complete ? (
                       conflict ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-semibold text-destructive">
                           <AlertTriangle className="h-3 w-3" />
-                          Sudah Digunakan
+                          Already Used
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 rounded-full bg-chart-2/15 px-2 py-0.5 text-[10px] font-semibold text-chart-2">
                           <CheckCircle2 className="h-3 w-3" />
-                          Tersedia
+                          Available
                         </span>
                       )
                     ) : (
                       <span className="text-[10px] text-muted-foreground">
-                        Lengkapi semua field lokasi
+                        Fill in all location fields
                       </span>
                     )}
                   </div>
@@ -338,13 +338,13 @@ export function AssignLocationDialog({
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
                     <div className="text-xs">
                       <p className="font-semibold text-destructive">
-                        Storage sudah digunakan!
+                        Storage already used!
                       </p>
                       <p className="mt-0.5 text-muted-foreground">
-                        Alamat{" "}
-                        <code className="tabular-nums">{addr}</code> dipakai
-                        part aktif lain. Pilih lokasi lain, atau nonaktifkan
-                        part yang sudah ada.
+                        Address{" "}
+                        <code className="tabular-nums">{addr}</code> is used by
+                        another active part. Pick a different location, or
+                        deactivate the existing part.
                       </p>
                     </div>
                   </div>
@@ -358,7 +358,7 @@ export function AssignLocationDialog({
         {!done && (
           <div className="flex items-center gap-2 border-t bg-muted/20 px-6 py-3">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>
-              Batal
+              Cancel
             </Button>
             <div className="flex-1" />
             <Button
@@ -366,7 +366,7 @@ export function AssignLocationDialog({
               onClick={submit}
             >
               <MapPin className="mr-1.5 h-4 w-4" />
-              {saving ? "Menyimpan…" : "Assign Lokasi"}
+              {saving ? "Saving…" : "Assign Location"}
             </Button>
           </div>
         )}

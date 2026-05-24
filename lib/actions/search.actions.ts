@@ -87,7 +87,7 @@ export async function searchParts(
   if (!parsed.success) {
     return {
       ok: false,
-      error: parsed.error.issues[0]?.message ?? "File tidak valid",
+      error: parsed.error.issues[0]?.message ?? "Invalid file",
     };
   }
 
@@ -102,14 +102,16 @@ export async function searchParts(
       );
       if (match) {
         const shortage = sr.qtyNeeded > match.currentStock;
+        const qtyToBuy = shortage ? sr.qtyNeeded - match.currentStock : 0;
         return {
           ...sr,
           status: shortage ? "shortage" : "exact",
           matchedPart: match,
           candidates: [],
           note: shortage
-            ? `Stok tersedia ${match.currentStock} ${match.unit}, dibutuhkan ${sr.qtyNeeded}`
-            : `Stok cukup: ${match.currentStock} ${match.unit}`,
+            ? `Stok hanya ${match.currentStock} ${match.unit} dari ${sr.qtyNeeded} yang dibutuhkan — perlu beli ${qtyToBuy} ${match.unit}`
+            : `Tersedia di ${match.storageAddr} · stok ${match.currentStock} ${match.unit}`,
+          qtyToBuy,
         };
       }
     }
@@ -133,7 +135,8 @@ export async function searchParts(
         status: "possible",
         matchedPart: null,
         candidates,
-        note: `${candidates.length} kemungkinan cocok ditemukan`,
+        note: `${candidates.length} kemungkinan cocok ditemukan — periksa & pilih manual`,
+        qtyToBuy: null,
       };
     }
 
@@ -143,7 +146,8 @@ export async function searchParts(
       status: "not_found",
       matchedPart: null,
       candidates: [],
-      note: "Tidak ditemukan di database",
+      note: "Tidak ditemukan di inventory — perlu pembelian",
+      qtyToBuy: sr.qtyNeeded,
     };
   });
 

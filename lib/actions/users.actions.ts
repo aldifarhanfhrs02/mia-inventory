@@ -7,7 +7,10 @@ import { db } from "@/lib/db";
 import { activityLogs, users } from "@/lib/db/schema";
 import { getServerSession, isAdmin } from "@/lib/auth/session";
 import { hashPassword } from "@/lib/auth/password";
-import { CreateUserSchema } from "@/lib/validations/users.schema";
+import {
+  CreateUserSchema,
+  UpdateUserSchema,
+} from "@/lib/validations/users.schema";
 import type {
   ActionResult,
   ActivityAction,
@@ -98,7 +101,7 @@ export async function createUser(
   if (!parsed.success) {
     return {
       ok: false,
-      error: parsed.error.issues[0]?.message ?? "Input tidak valid",
+      error: parsed.error.issues[0]?.message ?? "Invalid input",
     };
   }
   const v = parsed.data;
@@ -107,9 +110,12 @@ export async function createUser(
     .select({ id: users.id })
     .from(users)
     .where(sql`LOWER(${users.nik}) = ${v.nik.trim().toLowerCase()}`);
-  if (dup.length > 0) return { ok: false, error: "NIK sudah terdaftar" };
+  if (dup.length > 0) return { ok: false, error: "Employee ID is already registered" };
 
   const tempPassword = generateTempPassword();
+  // Hash before opening the transaction — bcrypt would otherwise hold the
+  // row/table lock open for the full ~100-300ms of CPU work.
+  const passwordHash = await hashPassword(tempPassword);
   try {
     await db.transaction(async (tx) => {
       const [created] = await tx
@@ -117,7 +123,7 @@ export async function createUser(
         .values({
           nik: v.nik.trim(),
           fullName: v.fullName.trim(),
-          passwordHash: await hashPassword(tempPassword),
+          passwordHash,
           role: v.role,
           status: "active",
           mustChangePassword: true,
@@ -130,7 +136,7 @@ export async function createUser(
     revalidatePath("/users");
     return { ok: true, data: { tempPassword } };
   } catch {
-    return { ok: false, error: "Gagal membuat user" };
+    return { ok: false, error: "Failed to create user" };
   }
 }
 
@@ -143,14 +149,16 @@ export async function resetPassword(
   if (!isAdmin(session)) return { ok: false, error: "Forbidden" };
 
   const [user] = await db.select().from(users).where(eq(users.id, id));
-  if (!user) return { ok: false, error: "User tidak ditemukan" };
+  if (!user) return { ok: false, error: "User not found" };
 
   const tempPassword = generateTempPassword();
+  // Hash before opening the transaction (see createUser for rationale).
+  const passwordHash = await hashPassword(tempPassword);
   await db.transaction(async (tx) => {
     await tx
       .update(users)
       .set({
-        passwordHash: await hashPassword(tempPassword),
+        passwordHash,
         mustChangePassword: true,
         updatedAt: new Date(),
       })
@@ -173,7 +181,7 @@ export async function setUserActive(
   if (!isAdmin(session)) return { ok: false, error: "Forbidden" };
 
   const [user] = await db.select().from(users).where(eq(users.id, id));
-  if (!user) return { ok: false, error: "User tidak ditemukan" };
+  if (!user) return { ok: false, error: "User not found" };
 
   if (!active && (user.role === "admin" || user.role === "superadmin")) {
     const [{ count }] = await db
@@ -188,7 +196,7 @@ export async function setUserActive(
     if (Number(count) <= 1) {
       return {
         ok: false,
-        error: "Promosikan admin lain terlebih dahulu sebelum menonaktifkan admin terakhir.",
+        error: "Promote another admin before deactivating the last one.",
       };
     }
   }
@@ -210,6 +218,44 @@ export async function setUserActive(
   return { ok: true, data: null };
 }
 
+/** Update a user's editable profile fields (fullName only). Admin only. */
+export async function updateUser(
+  id: string,
+  input: { fullName: string },
+): Promise<ActionResult<null>> {
+  const session = await getServerSession();
+  if (!session) return { ok: false, error: "Unauthorized" };
+  if (!isAdmin(session)) return { ok: false, error: "Forbidden" };
+
+  const parsed = UpdateUserSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid input",
+    };
+  }
+
+  const [user] = await db.select().from(users).where(eq(users.id, id));
+  if (!user) return { ok: false, error: "User not found" };
+
+  const next = parsed.data.fullName.trim();
+  if (next === user.fullName) return { ok: true, data: null };
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(users)
+      .set({ fullName: next, updatedAt: new Date() })
+      .where(eq(users.id, id));
+    await logUser(tx, session.user.id, "UPDATE_USER", id, {
+      before: { fullName: user.fullName },
+      after: { fullName: next },
+    });
+  });
+  revalidatePath("/users");
+  revalidatePath("/account");
+  return { ok: true, data: null };
+}
+
 /** Change a user's role. Admin only. */
 export async function updateUserRole(
   id: string,
@@ -220,7 +266,7 @@ export async function updateUserRole(
   if (!isAdmin(session)) return { ok: false, error: "Forbidden" };
 
   const [user] = await db.select().from(users).where(eq(users.id, id));
-  if (!user) return { ok: false, error: "User tidak ditemukan" };
+  if (!user) return { ok: false, error: "User not found" };
 
   await db.transaction(async (tx) => {
     await tx

@@ -27,14 +27,14 @@ export async function createPurchase(
   if (!isAdmin(session)) return { ok: false, error: "Forbidden" };
 
   if (!input.supplier.trim()) {
-    return { ok: false, error: "Supplier wajib diisi" };
+    return { ok: false, error: "Supplier is required" };
   }
   if (!(input.qtyOrdered > 0)) {
-    return { ok: false, error: "Quantity harus lebih dari 0" };
+    return { ok: false, error: "Quantity must be greater than 0" };
   }
 
   const [part] = await db.select().from(parts).where(eq(parts.id, input.partId));
-  if (!part) return { ok: false, error: "Part tidak ditemukan" };
+  if (!part) return { ok: false, error: "Part not found" };
 
   try {
     await db.transaction(async (tx) => {
@@ -71,7 +71,7 @@ export async function createPurchase(
     revalidatePath("/parts");
     return { ok: true, data: null };
   } catch {
-    return { ok: false, error: "Gagal menyimpan purchase request" };
+    return { ok: false, error: "Failed to save purchase request" };
   }
 }
 

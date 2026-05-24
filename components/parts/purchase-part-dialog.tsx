@@ -106,7 +106,7 @@ export function PurchasePartDialog({
             <div>
               <DialogTitle className="text-lg">Purchase Part</DialogTitle>
               <DialogDescription className="text-xs">
-                Buat purchase request untuk part dengan stok kritis.
+                Create a purchase request for parts with critical stock.
               </DialogDescription>
             </div>
           </div>
@@ -178,7 +178,7 @@ export function PurchasePartDialog({
                   <div className="mt-3 flex items-start gap-2 rounded-md border border-primary/20 bg-primary/5 p-2.5">
                     <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
                     <p className="text-xs">
-                      Rekomendasi order:{" "}
+                      Recommended order:{" "}
                       <button
                         type="button"
                         onClick={() => set("qty", String(recommended))}
@@ -187,7 +187,7 @@ export function PurchasePartDialog({
                         {recommended} {part.unit}
                       </button>{" "}
                       <span className="text-muted-foreground">
-                        (untuk kembali ke std stock — klik untuk pakai)
+                        (to return to std stock — click to use)
                       </span>
                     </p>
                   </div>
@@ -195,13 +195,13 @@ export function PurchasePartDialog({
 
                 {/* Form section: order details */}
                 <div>
-                  <SectionHeader icon={ShoppingCart}>Detail Order</SectionHeader>
+                  <SectionHeader icon={ShoppingCart}>Order Details</SectionHeader>
                   <div className="mt-3 space-y-4">
                     <Field label="Supplier" required>
                       <Input
                         value={form.supplier}
                         onChange={(e) => set("supplier", e.target.value)}
-                        placeholder="Contoh: PT Schneider Electric"
+                        placeholder="e.g. PT Schneider Electric"
                       />
                     </Field>
                     <div className="grid grid-cols-2 gap-3">
@@ -220,7 +220,7 @@ export function PurchasePartDialog({
                           </span>
                         </div>
                       </Field>
-                      <Field label="ETA (perkiraan tiba)">
+                      <Field label="ETA (expected arrival)">
                         <Input
                           type="date"
                           value={form.eta}
@@ -243,7 +243,7 @@ export function PurchasePartDialog({
                         rows={2}
                         value={form.notes}
                         onChange={(e) => set("notes", e.target.value)}
-                        placeholder="Catatan tambahan untuk purchase request (opsional)…"
+                        placeholder="Additional notes for the purchase request (optional)…"
                       />
                     </Field>
                   </div>
@@ -261,12 +261,12 @@ export function PurchasePartDialog({
                   >
                     <div className="mb-1 flex items-center justify-between">
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Estimasi Total
+                        Total Estimate
                       </p>
                       {part.price == null && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
                           <AlertTriangle className="h-3 w-3" />
-                          Harga belum diset
+                          Price not set
                         </span>
                       )}
                     </div>
@@ -312,12 +312,12 @@ export function PurchasePartDialog({
         {!done && part && (
           <div className="flex items-center gap-2 border-t bg-muted/20 px-6 py-3">
             <Button variant="ghost" onClick={close}>
-              Batal
+              Cancel
             </Button>
             <div className="flex-1" />
             <Button disabled={!canSubmit || saving} onClick={submit}>
               <ShoppingCart className="mr-1 h-4 w-4" />
-              {saving ? "Menyimpan…" : "Submit Purchase"}
+              {saving ? "Saving…" : "Submit Purchase"}
             </Button>
           </div>
         )}

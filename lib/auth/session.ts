@@ -20,6 +20,10 @@ export interface SessionUser {
 
 export interface Session {
   user: SessionUser;
+  /** Epoch ms when this token expires. Mirrors `exp` from the signed payload. */
+  expiresAt: number;
+  /** Back-derived: expiresAt − SESSION_MAX_AGE*1000. Existing cookies stay valid. */
+  issuedAt: number;
 }
 
 function secret(): string {
@@ -80,6 +84,8 @@ export async function getServerSession(): Promise<Session | null> {
       role: user.role,
       mustChangePassword: user.mustChangePassword,
     },
+    expiresAt: data.exp,
+    issuedAt: data.exp - MAX_AGE_SECONDS * 1000,
   };
 }
 

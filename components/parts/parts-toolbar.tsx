@@ -3,7 +3,6 @@
 import {
   ArrowDownToLine,
   FileSpreadsheet,
-  Filter,
   Plus,
   Search,
   X,
@@ -12,28 +11,57 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/utils/format";
-import { PartsFilterDialog } from "./parts-filter-dialog";
+import {
+  CheckboxPopoverContent,
+  DateRangePopoverContent,
+  FilterButton,
+  type CheckboxOption,
+} from "./filter-popovers";
 
-const ARRAY_KEYS = ["status", "type", "maker", "category"] as const;
+const ARRAY_KEYS = [
+  "status",
+  "type",
+  "partClass",
+  "maker",
+  "category",
+] as const;
 const DATE_KEYS = ["updatedFrom", "updatedTo"] as const;
 
-/** Pretty label for an active filter chip. */
+/** Pretty label for an active filter chip in the secondary row. */
 const FILTER_LABEL: Record<string, string> = {
   status: "Status",
   type: "Type",
+  partClass: "Source",
   maker: "Maker",
   category: "Category",
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  available: "Available",
-  low_stock: "Low Stock",
-  out_of_stock: "Out of Stock",
-  unassigned: "Unassigned",
-  inactive: "Inactive",
-};
+const STATUS_OPTIONS: CheckboxOption[] = [
+  { value: "available", label: "Available" },
+  { value: "low_stock", label: "Low Stock" },
+  { value: "out_of_stock", label: "Out of Stock" },
+  { value: "unassigned", label: "Unassigned" },
+  { value: "inactive", label: "Inactive" },
+];
+
+const TYPE_OPTIONS: CheckboxOption[] = [
+  { value: "Electrical", label: "Electrical" },
+  { value: "Mechanical", label: "Mechanical" },
+  { value: "Fabrication", label: "Fabrication" },
+];
+
+const SOURCE_OPTIONS: CheckboxOption[] = [
+  { value: "consumable", label: "Consumable" },
+  { value: "existing_project", label: "Existing Project" },
+];
+
+const STATUS_LABEL: Record<string, string> = Object.fromEntries(
+  STATUS_OPTIONS.map((o) => [o.value, o.label]),
+);
+const SOURCE_LABEL: Record<string, string> = Object.fromEntries(
+  SOURCE_OPTIONS.map((o) => [o.value, o.label]),
+);
 
 interface PartsToolbarProps {
   isAdmin: boolean;
@@ -44,7 +72,7 @@ interface PartsToolbarProps {
   onExport: () => void;
 }
 
-/** Master Part toolbar — search, one "Filter" button (all filters), sort, chips. */
+/** Master Part toolbar — search + 6 inline popover filters + admin actions. */
 export function PartsToolbar({
   isAdmin,
   makers,
@@ -57,7 +85,6 @@ export function PartsToolbar({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(searchParams.get("search") ?? "");
-  const [filterOpen, setFilterOpen] = useState(false);
 
   const setParam = (key: string, value: string | null) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -89,7 +116,9 @@ export function PartsToolbar({
     setParam(key, next.length ? next.join(",") : null);
   };
 
-  // Active filter chips — array filters + the date range.
+  const resetKey = (key: string) => setParam(key, null);
+
+  // Active chips for the secondary row.
   const updatedFrom = searchParams.get("updatedFrom") ?? "";
   const updatedTo = searchParams.get("updatedTo") ?? "";
   const arrayChips = ARRAY_KEYS.flatMap((key) =>
@@ -106,6 +135,22 @@ export function PartsToolbar({
     router.push(`${pathname}?${params.toString()}`);
   };
 
+  /** Render the human-readable value of an active array-filter chip. */
+  const chipValueLabel = (key: string, value: string): string => {
+    if (key === "status") return STATUS_LABEL[value] ?? value;
+    if (key === "partClass") return SOURCE_LABEL[value] ?? value;
+    return value;
+  };
+
+  const makerOptions: CheckboxOption[] = makers.map((m) => ({
+    value: m,
+    label: m,
+  }));
+  const categoryOptions: CheckboxOption[] = categories.map((c) => ({
+    value: c,
+    label: c,
+  }));
+
   return (
     <div className="mb-4 space-y-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -114,28 +159,79 @@ export function PartsToolbar({
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari part name, code, barcode…"
+            placeholder="Search part name, code, barcode…"
             className="h-10 rounded-lg pl-9"
           />
         </div>
 
-        {/* SINGLE FILTER BUTTON — opens the all-filters dialog */}
-        <Button
-          variant="outline"
-          onClick={() => setFilterOpen(true)}
-          className={cn(
-            "h-10 gap-1.5 rounded-lg px-3.5",
-            totalActive > 0 && "border-primary text-primary",
-          )}
+        {/* Inline popover filters. */}
+        <FilterButton label="Status" count={selectedOf("status").length}>
+          <CheckboxPopoverContent
+            options={STATUS_OPTIONS}
+            selected={selectedOf("status")}
+            onToggle={(v) => toggleFilterValue("status", v)}
+            onReset={() => resetKey("status")}
+          />
+        </FilterButton>
+
+        <FilterButton label="Type" count={selectedOf("type").length}>
+          <CheckboxPopoverContent
+            options={TYPE_OPTIONS}
+            selected={selectedOf("type")}
+            onToggle={(v) => toggleFilterValue("type", v)}
+            onReset={() => resetKey("type")}
+          />
+        </FilterButton>
+
+        <FilterButton label="Source" count={selectedOf("partClass").length}>
+          <CheckboxPopoverContent
+            options={SOURCE_OPTIONS}
+            selected={selectedOf("partClass")}
+            onToggle={(v) => toggleFilterValue("partClass", v)}
+            onReset={() => resetKey("partClass")}
+          />
+        </FilterButton>
+
+        <FilterButton label="Maker" count={selectedOf("maker").length}>
+          <CheckboxPopoverContent
+            options={makerOptions}
+            selected={selectedOf("maker")}
+            onToggle={(v) => toggleFilterValue("maker", v)}
+            onReset={() => resetKey("maker")}
+            emptyHint="No makers registered yet"
+          />
+        </FilterButton>
+
+        <FilterButton
+          label="Category"
+          count={selectedOf("category").length}
         >
-          <Filter className="h-3.5 w-3.5" />
-          Filter
-          {totalActive > 0 && (
-            <span className="rounded-full bg-primary px-1.5 text-xs text-primary-foreground">
-              {totalActive}
-            </span>
-          )}
-        </Button>
+          <CheckboxPopoverContent
+            options={categoryOptions}
+            selected={selectedOf("category")}
+            onToggle={(v) => toggleFilterValue("category", v)}
+            onReset={() => resetKey("category")}
+            emptyHint="No categories registered yet"
+          />
+        </FilterButton>
+
+        <FilterButton
+          label="Diupdate"
+          count={(updatedFrom ? 1 : 0) + (updatedTo ? 1 : 0)}
+        >
+          <DateRangePopoverContent
+            from={updatedFrom}
+            to={updatedTo}
+            onChangeFrom={(v) => setParam("updatedFrom", v || null)}
+            onChangeTo={(v) => setParam("updatedTo", v || null)}
+            onReset={() => {
+              const params = new URLSearchParams(searchParams.toString());
+              for (const k of DATE_KEYS) params.delete(k);
+              params.delete("page");
+              router.push(`${pathname}?${params.toString()}`);
+            }}
+          />
+        </FilterButton>
 
         {isAdmin && (
           <div className="ml-auto flex items-center gap-2">
@@ -157,7 +253,7 @@ export function PartsToolbar({
             </Button>
             <Button className="h-10 rounded-lg px-4" onClick={onAdd}>
               <Plus className="mr-1.5 h-4 w-4" />
-              Tambah Part
+              Add Part
             </Button>
           </div>
         )}
@@ -173,8 +269,7 @@ export function PartsToolbar({
               onClick={() => toggleFilterValue(c.key, c.value)}
               className="flex items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-xs font-medium text-accent-foreground hover:bg-accent/70"
             >
-              {FILTER_LABEL[c.key] ?? c.key}:{" "}
-              {c.key === "status" ? (STATUS_LABEL[c.value] ?? c.value) : c.value}
+              {FILTER_LABEL[c.key] ?? c.key}: {chipValueLabel(c.key, c.value)}
               <X className="h-3 w-3" />
             </button>
           ))}
@@ -207,13 +302,6 @@ export function PartsToolbar({
           </button>
         </div>
       )}
-
-      <PartsFilterDialog
-        open={filterOpen}
-        onOpenChange={setFilterOpen}
-        makers={makers}
-        categories={categories}
-      />
     </div>
   );
 }

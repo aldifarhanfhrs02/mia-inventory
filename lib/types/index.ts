@@ -35,6 +35,7 @@ export type ActivityAction =
   | "RELOCATE"
   | "IMPORT"
   | "CREATE_USER"
+  | "UPDATE_USER"
   | "DEACTIVATE_USER"
   | "RESET_PASSWORD"
   | "CHANGE_ROLE"
@@ -48,7 +49,7 @@ export type EntityType = "Part" | "User" | "Movement" | "Purchase" | "Project";
 export type StorageType = "A" | "B";
 
 /** Procurement / usage classification — drives the "Category" column. */
-export type PartClass = "consumable" | "existing_project" | "new_part";
+export type PartClass = "consumable" | "existing_project";
 
 export type UnitType =
   | "pcs"
@@ -287,6 +288,14 @@ export interface SearchResult extends SearchInputRow {
   matchedPart: PartWithStock | null;
   candidates: PartWithStock[];
   note: string;
+  /**
+   * Recommended quantity to actually purchase (existing stock is auto-deducted).
+   *   exact      → 0
+   *   shortage   → qtyNeeded − matchedPart.currentStock
+   *   possible   → null (user must review candidates first)
+   *   not_found  → qtyNeeded
+   */
+  qtyToBuy: number | null;
 }
 
 export interface SearchSummary {

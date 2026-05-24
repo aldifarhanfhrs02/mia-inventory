@@ -306,12 +306,12 @@ export async function createMovement(
               : sql`LOWER(${parts.partCode}) = ${key.toLowerCase()}`,
           ),
         );
-      if (!part) throw new Error("Part tidak ditemukan atau tidak aktif");
+      if (!part) throw new Error("Part not found or inactive");
 
       const before = await currentStock(tx, part.id);
       if (v.type === "OUT" && v.quantity > before) {
         throw new Error(
-          `Quantity melebihi stok tersedia (${before} ${part.unit})`,
+          `Quantity exceeds available stock (${before} ${part.unit})`,
         );
       }
       const after =
@@ -363,7 +363,7 @@ export async function createMovement(
   } catch (err) {
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "Gagal menyimpan transaksi",
+      error: err instanceof Error ? err.message : "Failed to save transaction",
     };
   }
 }

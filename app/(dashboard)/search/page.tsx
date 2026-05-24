@@ -6,7 +6,7 @@ export default function PartSearchPage() {
     <>
       <PageHeader
         title="Part Search"
-        subtitle="Upload file Excel untuk mencocokkan part dengan database"
+        subtitle="Bandingkan daftar pembelian dengan inventory — pakai stok yang sudah ada sebelum membeli baru."
       />
       <SearchClient />
     </>

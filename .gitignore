@@ -41,3 +41,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 /dev.log
+
+# Mengabaikan file catatan AI
+AGENTS.md
+CLAUDE.md
+

@@ -4,6 +4,7 @@ import { Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { CreatableSelect } from "@/components/shared/creatable-select";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,11 +29,9 @@ import type { PartClass, PartType, UpdatePartInput } from "@/lib/types";
 import type { PartTableRow } from "@/lib/actions/parts.actions";
 
 const TYPES: PartType[] = ["Electrical", "Mechanical", "Fabrication"];
-const UNITS = ["pcs", "set", "mtr", "kg", "lbr", "btg", "rol", "pak"];
 const PART_CLASSES: { value: PartClass; label: string }[] = [
   { value: "consumable", label: "Consumable" },
   { value: "existing_project", label: "Existing Project" },
-  { value: "new_part", label: "New Part" },
 ];
 const numOrU = (s: string): number | undefined =>
   s.trim() === "" ? undefined : Number(s);
@@ -46,7 +45,8 @@ function formFromPart(part: PartTableRow | null) {
     type: (part?.type ?? "Electrical") as PartType,
     category: part?.category ?? "",
     partClass: (part?.partClass ?? "consumable") as PartClass,
-    unit: part?.unit ?? "pcs",
+    // Unit is a free-form string at the DB level; CreatableSelect can add new ones.
+    unit: (part?.unit ?? "pcs") as string,
     price: part?.price?.toString() ?? "",
     minStock: part ? String(part.minStock) : "",
     stdStock: part?.stdStock?.toString() ?? "",
@@ -60,10 +60,18 @@ interface EditPartSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   part: PartTableRow | null;
+  units: string[];
+  categories: string[];
 }
 
 /** Single-page Edit Part sheet — identity, price, and stock thresholds. */
-export function EditPartSheet({ open, onOpenChange, part }: EditPartSheetProps) {
+export function EditPartSheet({
+  open,
+  onOpenChange,
+  part,
+  units,
+  categories,
+}: EditPartSheetProps) {
   const router = useRouter();
   // Mounted with a `key` per part (see parts-client), so init directly.
   const [form, setForm] = useState(() => formFromPart(part));
@@ -92,7 +100,7 @@ export function EditPartSheet({ open, onOpenChange, part }: EditPartSheetProps) 
     };
     const check = UpdatePartSchema.safeParse(input);
     if (!check.success) {
-      toast.error(check.error.issues[0]?.message ?? "Periksa kembali isian");
+      toast.error(check.error.issues[0]?.message ?? "Please review your input");
       return;
     }
     setSaving(true);
@@ -130,12 +138,12 @@ export function EditPartSheet({ open, onOpenChange, part }: EditPartSheetProps) 
         {done ? (
           <div className="flex-1 px-4 py-12 text-center">
             <div className="mb-3 text-5xl">✅</div>
-            <p className="text-base font-semibold">Part Berhasil Diperbarui</p>
+            <p className="text-base font-semibold">Part Updated Successfully</p>
             <p className="mt-1 text-sm text-muted-foreground">
               <strong>{form.partName}</strong> ({form.partCode})
             </p>
             <Button className="mt-5" onClick={() => onOpenChange(false)}>
-              Selesai
+              Done
             </Button>
           </div>
         ) : (
@@ -202,25 +210,24 @@ export function EditPartSheet({ open, onOpenChange, part }: EditPartSheetProps) 
                       </SelectContent>
                     </Select>
                   </div>
-                  {field("Category", "category")}
+                  <div className="space-y-1.5">
+                    <Label>Category</Label>
+                    <CreatableSelect
+                      value={form.category}
+                      onChange={(v) => set("category", v)}
+                      options={categories}
+                      placeholder="Select or add category…"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Unit</Label>
-                  <Select
+                  <CreatableSelect
                     value={form.unit}
-                    onValueChange={(v) => set("unit", v as typeof form.unit)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {UNITS.map((u) => (
-                        <SelectItem key={u} value={u}>
-                          {u}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(v) => set("unit", v)}
+                    options={units}
+                    placeholder="Select or add unit…"
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Price per Unit</Label>
@@ -258,12 +265,12 @@ export function EditPartSheet({ open, onOpenChange, part }: EditPartSheetProps) 
                   variant="outline"
                   onClick={() => onOpenChange(false)}
                 >
-                  Batal
+                  Cancel
                 </Button>
                 <div className="flex-1" />
                 <Button disabled={saving} onClick={submit}>
                   <Pencil className="mr-1 h-4 w-4" />
-                  {saving ? "Menyimpan…" : "Simpan Perubahan"}
+                  {saving ? "Saving…" : "Save Changes"}
                 </Button>
               </div>
             </>

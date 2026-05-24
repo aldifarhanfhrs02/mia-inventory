@@ -15,7 +15,7 @@ export default async function UserManagementPage() {
 
   return (
     <>
-      <PageHeader title="User Management" subtitle="Kelola akun pengguna" />
+      <PageHeader title="User Management" subtitle="Manage user accounts" />
       <UsersClient rows={rows} summary={summary} />
     </>
   );
